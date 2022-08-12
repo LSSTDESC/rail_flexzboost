@@ -1,2 +1,2 @@
-# rail_flexzboot
-RAIL interface to Flexzboot algorithms
+# rail_flexzboost
+RAIL interface to Flexzboost algorithms
