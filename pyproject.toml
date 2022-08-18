@@ -2,7 +2,7 @@
 name = "rail-flexzboost"
 description = "RAIL Flexzboost Interface"
 readme = "README.rst"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 license = { file = "LICENSE" }
 authors = [
     { name = "The LSST DESC PZ WG", email = "samuel.j.schmidt@gmail.com" }
