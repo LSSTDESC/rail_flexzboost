@@ -35,7 +35,15 @@ jobs:
         pip install flake8 pytest pytest-cov mockmpi pytest-timeout
     - name: Test with pytest
       run: |
-        python -m pytest --cov=./rail --cov-report=xml
+        python -m pytest --cov=rail.estimation.algos.flexzboost --cov-report=xml
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        env_vars: OS,PYTHON
+        name: codecov-umbrella
+        fail_ci_if_error: true		
     - name: Lint with pylint
       run: |
         pip install pylint
