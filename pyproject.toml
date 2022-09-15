@@ -21,7 +21,8 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "pz-rail",
-    "FlexCode[all]",
+    "sklearn",
+    "xgboost",
 ]
 
 [project.optional-dependencies]
