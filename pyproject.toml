@@ -21,7 +21,7 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "pz-rail",
-    "sklearn",
+    "scikit-learn",
     "xgboost",
 ]
 
