@@ -23,6 +23,7 @@ dependencies = [
     "pz-rail",
     "scikit-learn",
     "xgboost",
+    "FlexCode @ git+https://github.com/lee-group-cmu/FlexCode",
 ]
 
 [project.optional-dependencies]
