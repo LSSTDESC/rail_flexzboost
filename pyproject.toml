@@ -22,8 +22,7 @@ dynamic = ["version"]
 dependencies = [
     "pz-rail",
     "scikit-learn",
-    "xgboost",
-    "FlexCode @ git+https://github.com/lee-group-cmu/FlexCode",
+    "xgboost"
 ]
 
 [project.optional-dependencies]
