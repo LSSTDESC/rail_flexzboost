@@ -23,7 +23,7 @@ def_maglims = dict(mag_u_lsst=27.79,
                    mag_y_lsst=27.05)
 
 
-def make_color_data(data_dict, bands, err_bands, ref_band, nondetect_val):
+def make_color_data(data_dict, bands, err_bands, ref_band, nondetect_val, maglimdict):
     """
     make a dataset consisting of the i-band mag and the five colors.
 
@@ -52,20 +52,20 @@ def make_color_data(data_dict, bands, err_bands, ref_band, nondetect_val):
         for j, xx in enumerate(band1):
             if np.isnan(nondetect_val): # pragma: no cover
                 if np.isnan(xx):
-                    band1[j] = def_maglims[band1name]
+                    band1[j] = maglimdict[band1name]
                     band1err[j] = 1.0
             else:
                 if np.isclose(xx, nondetect_val, atol=.01):
-                    band1[j] = def_maglims[band1name]
+                    band1[j] = maglimdict[band1name]
                     band1err[j] = 1.0
         for j, xx in enumerate(band2):
             if np.isnan(nondetect_val): # pragma: no cover
                 if np.isnan(xx):
-                    band2[j] = def_maglims[band2name]
+                    band2[j] = maglimdict[band2name]
                     band2err[j] = 1.0
             else:
                 if np.isclose(xx, 99., atol=0.01):  #pragma: no cover
-                    band2[j] = def_maglims[band2name]
+                    band2[j] = maglimdict[band2name]
                     band2err[j] = 1.0
 
         input_data = np.vstack((input_data, band1-band2))
@@ -104,6 +104,7 @@ class Inform_FZBoost(CatInformer):
                           bands=Param(list, def_bands, msg="bands to use in estimation"),
                           err_bands=Param(list, def_err_bands, msg="error column names to use in estimation"),
                           ref_band=Param(str, "mag_i_lsst", msg="band to use in addition to colors"),
+                          mag_limits=Param(dict, def_maglims, msg="1 sigma mag limits"),
                           regression_params=Param(dict, {'max_depth': 8, 'objective': 'reg:squarederror'},
                                                   msg="dictionary of options passed to flexcode, includes "
                                                   "max_depth (int), and objective, which should be set "
@@ -149,7 +150,8 @@ class Inform_FZBoost(CatInformer):
         speczs = training_data['redshift']
         print("stacking some data...")
         color_data = make_color_data(training_data, self.config.bands, self.config.err_bands,
-                                     self.config.ref_band, self.config.nondetect_val)
+                                     self.config.ref_band, self.config.nondetect_val,
+                                     self.config.mag_limits)
         train_dat, val_dat, train_sz, val_sz = self.split_data(color_data,
                                                                speczs,
                                                                self.config.trainfrac)
@@ -197,7 +199,9 @@ class FZBoost(CatEstimator):
                           nondetect_val=Param(float, 99.0, msg="value to be replaced with magnitude limit for non detects"),
                           bands=Param(list, def_bands, msg="bands to use in estimation"),
                           err_bands=Param(list, def_err_bands, msg="error column names to use in estimation"),
-                          ref_band=Param(str, "mag_i_lsst", msg="band to use in addition to colors"))
+                          ref_band=Param(str, "mag_i_lsst", msg="band to use in addition to colors"),
+                          mag_limits=Param(dict, def_maglims, msg="1 sigma mag limits"),
+                          )
 
     def __init__(self, args, comm=None):
         """ Constructor:
@@ -210,7 +214,8 @@ class FZBoost(CatEstimator):
     def _process_chunk(self, start, end, data, first):
         print(f"Process {self.rank} estimating PZ PDF for rows {start:,} - {end:,}")
         color_data = make_color_data(data, self.config.bands, self.config.err_bands,
-                                     self.config.ref_band, self.config.nondetect_val)
+                                     self.config.ref_band, self.config.nondetect_val,
+                                     self.config.mag_limits)
         pdfs, z_grid = self.model.predict(color_data, n_grid=self.config.nzbins)
         self.zgrid = np.array(z_grid).flatten()
         qp_dstn = qp.Ensemble(qp.interp, data=dict(xvals=self.zgrid, yvals=pdfs))

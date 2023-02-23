@@ -1,4 +1,4 @@
 # rail_flexzboost
 RAIL interface to Flexzboost algorithms
 
-run command `pip install -r requirements.txt` to grab the forked version of FlexCode
+run command `pip install git+https://github.com/lee-group-cmu/FlexCode` to grab the forked version of FlexCode
