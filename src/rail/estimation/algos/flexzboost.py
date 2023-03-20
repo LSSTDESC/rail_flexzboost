@@ -8,6 +8,7 @@ p(z) shape) via cde-loss over a grid.
 
 import numpy as np
 import qp
+import qp_flexzboost
 # from numpy import inf
 from ceci.config import StageParameter as Param
 from rail.estimation.estimator import CatEstimator, CatInformer
@@ -201,6 +202,7 @@ class FZBoost(CatEstimator):
                           err_bands=Param(list, def_err_bands, msg="error column names to use in estimation"),
                           ref_band=Param(str, "mag_i_lsst", msg="band to use in addition to colors"),
                           mag_limits=Param(dict, def_maglims, msg="1 sigma mag limits"),
+                          qp_representation=Param(str, "interp", msg="qp generator to use. [interp|flexzboost]")
                           )
 
     def __init__(self, args, comm=None):
@@ -216,9 +218,22 @@ class FZBoost(CatEstimator):
         color_data = make_color_data(data, self.config.bands, self.config.err_bands,
                                      self.config.ref_band, self.config.nondetect_val,
                                      self.config.mag_limits)
-        pdfs, z_grid = self.model.predict(color_data, n_grid=self.config.nzbins)
-        self.zgrid = np.array(z_grid).flatten()
-        qp_dstn = qp.Ensemble(qp.interp, data=dict(xvals=self.zgrid, yvals=pdfs))
+
+        if self.config.qp_representation == 'interp':
+            pdfs, z_grid = self.model.predict(color_data, n_grid=self.config.nzbins)
+            self.zgrid = np.array(z_grid).flatten()
+            qp_dstn = qp.Ensemble(qp.interp, data=dict(xvals=self.zgrid, yvals=pdfs))
+
+        elif self.config.qp_representation == 'flexzboost':
+            basis_coefficients = self.model.predict_coefs(color_data)
+            qp_dstn = qp.Ensemble(qp_flexzboost.flexzboost_create_from_basis_coef_object,
+                                  data=dict(weights=basis_coefficients.coefs,
+                                            basis_coefficients_object=basis_coefficients))
+
+            # This line might not work at all due to the `self.model.make_grid` call.
+            self.zgrid = np.array(self.model.make_grid(self.config.nzbins)).flatten()
+
+        # mode if very fast for qp_flexzboost, so, no concern about computation time here.
         zmode = qp_dstn.mode(grid=self.zgrid)
         qp_dstn.set_ancil(dict(zmode=zmode))
         self._do_chunk_output(qp_dstn, start, end, first)
