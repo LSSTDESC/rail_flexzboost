@@ -9,8 +9,8 @@ p(z) shape) via cde-loss over a grid.
 import numpy as np
 import qp
 import qp_flexzboost
-# from numpy import inf
 from ceci.config import StageParameter as Param
+from flexcode.helpers import make_grid
 from rail.estimation.estimator import CatEstimator, CatInformer
 
 def_filt = ['u', 'g', 'r', 'i', 'z', 'y']
@@ -230,10 +230,11 @@ class FZBoost(CatEstimator):
                                   data=dict(weights=basis_coefficients.coefs,
                                             basis_coefficients_object=basis_coefficients))
 
-            # This line might not work at all due to the `self.model.make_grid` call.
-            self.zgrid = np.array(self.model.make_grid(self.config.nzbins)).flatten()
+            # `make_grid` is a helper function from Flexcode that will create a nested
+            # array of linearly spaced values. We then flatten that nested array.
+            # so the final output will have the form `[0.0, 0.1, ..., 3.0]`.
+            self.zgrid = np.array(make_grid(self.config.nzbins, self.config.zmin, self.config.zmax)).flatten()
 
-        # mode if very fast for qp_flexzboost, so, no concern about computation time here.
         zmode = qp_dstn.mode(grid=self.zgrid)
         qp_dstn.set_ancil(dict(zmode=zmode))
         self._do_chunk_output(qp_dstn, start, end, first)
