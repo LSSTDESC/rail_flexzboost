@@ -233,7 +233,7 @@ class FZBoost(CatEstimator):
             # `make_grid` is a helper function from Flexcode that will create a nested
             # array of linearly spaced values. We then flatten that nested array.
             # so the final output will have the form `[0.0, 0.1, ..., 3.0]`.
-            self.zgrid = np.array(make_grid(self.config.nzbins, self.config.zmin, self.config.zmax)).flatten()
+            self.zgrid = np.array(make_grid(self.config.nzbins, basis_coefficients.z_min, basis_coefficients.z_max)).flatten()
 
         zmode = qp_dstn.mode(grid=self.zgrid)
         qp_dstn.set_ancil(dict(zmode=zmode))
