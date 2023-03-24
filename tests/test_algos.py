@@ -83,6 +83,30 @@ def test_flexzboost_with_qp_flexzboost():
     # assert np.isclose(results.ancil['zmode'], zb_expected).all()
     assert np.isclose(results.ancil['zmode'], rerun_results.ancil['zmode']).all()
 
+def test_flexzboost_with_unknown_qp_representation():
+    """Pass a bogus qp_representation string to the config, expect a ValueError"""
+    train_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
+                         'trainfrac': 0.75, 'bumpmin': 0.02,
+                         'bumpmax': 0.35, 'nbump': 3,
+                         'sharpmin': 0.7, 'sharpmax': 2.1,
+                         'nsharp': 3, 'max_basis': 35,
+                         'basis_system': 'cosine',
+                         'regression_params': {'max_depth': 8,
+                                               'objective':
+                                               'reg:squarederror'},
+                         'hdf5_groupname': 'photometry',
+                         'model': 'model.tmp'}
+    estim_config_dict = {'hdf5_groupname': 'photometry',
+                         'model': 'model.tmp',
+                         'qp_representation': 'bogus'}
+    # zb_expected = np.array([0.13, 0.13, 0.13, 0.12, 0.12, 0.13, 0.12, 0.13,
+    #                         0.12, 0.12])
+    train_algo = flexzboost.Inform_FZBoost
+    pz_algo = flexzboost.FZBoost
+    with pytest.raises(ValueError) as excinfo:
+        one_algo("FZBoost", train_algo, pz_algo, train_config_dict, estim_config_dict)
+        assert "Unknown qp_representation" in str(excinfo.value)
+
 def test_catch_bad_bands():
     params = dict(bands='u,g,r,i,z,y')
     with pytest.raises(ValueError):
