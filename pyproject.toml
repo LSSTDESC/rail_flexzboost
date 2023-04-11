@@ -30,6 +30,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "coverage",
+    "ipykernel",
+    "matplotlib",
+    "numpy",
     "pylint",
     "pytest",
     "pytest-cov",
