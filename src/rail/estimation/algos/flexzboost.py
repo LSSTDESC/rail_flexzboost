@@ -12,16 +12,7 @@ import qp_flexzboost
 from ceci.config import StageParameter as Param
 from flexcode.helpers import make_grid
 from rail.estimation.estimator import CatEstimator, CatInformer
-
-def_filt = ['u', 'g', 'r', 'i', 'z', 'y']
-def_bands = [f"mag_{band}_lsst" for band in def_filt]
-def_err_bands = [f"mag_err_{band}_lsst" for band in def_filt]
-def_maglims = dict(mag_u_lsst=27.79,
-                   mag_g_lsst=29.04,
-                   mag_r_lsst=29.06,
-                   mag_i_lsst=28.62,
-                   mag_z_lsst=27.98,
-                   mag_y_lsst=27.05)
+from rail.core.common_params import SHARED_PARAMS
 
 
 def make_color_data(data_dict, bands, err_bands, ref_band, nondetect_val, maglimdict):
@@ -81,10 +72,15 @@ class Inform_FZBoost(CatInformer):
     """
     name = 'Inform_FZBoost'
     config_options = CatInformer.config_options.copy()
-    config_options.update(zmin=Param(float, 0.0, msg="The minimum redshift of the z grid"),
-                          zmax=Param(float, 3.0, msg="The maximum redshift of the z grid"),
-                          nzbins=Param(int, 301, msg="The number of gridpoints in the z grid"),
-                          nondetect_val=Param(float, 99.0, msg="value to be replaced with magnitude limit for non detects"),
+    config_options.update(zmin=SHARED_PARAMS,
+                          zmax=SHARED_PARAMS,
+                          nzbins=SHARED_PARAMS,
+                          nondetect_val=SHARED_PARAMS,
+                          mag_limits=SHARED_PARAMS,
+                          bands=SHARED_PARAMS,
+                          err_bands=SHARED_PARAMS,
+                          ref_band=SHARED_PARAMS,
+                          redshift_col=SHARED_PARAMS,    
                           trainfrac=Param(float, 0.75,
                                           msg="fraction of training "
                                           "data to use for training (rest used for bump thresh "
@@ -95,17 +91,13 @@ class Inform_FZBoost(CatInformer):
                                         "small bumps"),
                           bumpmax=Param(float, 0.35,
                                         msg="max value in grid checked "
-                                        "for removal of small bumps"),
+                                            "for removal of small bumps"),
                           nbump=Param(int, 20, msg="number of grid points in bumpthresh grid search"),
                           sharpmin=Param(float, 0.7, msg="min value in grid checked in optimal sharpening parameter fit"),
                           sharpmax=Param(float, 2.1, msg="max value in grid checked in optimal sharpening parameter fit"),
                           nsharp=Param(int, 15, msg="number of search points in sharpening fit"),
                           max_basis=Param(int, 35, msg="maximum number of basis funcitons to use in density estimate"),
                           basis_system=Param(str, 'cosine', msg="type of basis sytem to use with flexcode"),
-                          bands=Param(list, def_bands, msg="bands to use in estimation"),
-                          err_bands=Param(list, def_err_bands, msg="error column names to use in estimation"),
-                          ref_band=Param(str, "mag_i_lsst", msg="band to use in addition to colors"),
-                          mag_limits=Param(dict, def_maglims, msg="1 sigma mag limits"),
                           regression_params=Param(dict, {'max_depth': 8, 'objective': 'reg:squarederror'},
                                                   msg="dictionary of options passed to flexcode, includes "
                                                   "max_depth (int), and objective, which should be set "
@@ -148,7 +140,7 @@ class Inform_FZBoost(CatInformer):
             training_data = self.get_data('input')[self.config.hdf5_groupname]
         else:  #pragma: no cover
             training_data = self.get_data('input')
-        speczs = training_data['redshift']
+        speczs = training_data[self.config['redshift_col']]
         print("stacking some data...")
         color_data = make_color_data(training_data, self.config.bands, self.config.err_bands,
                                      self.config.ref_band, self.config.nondetect_val,
@@ -196,12 +188,12 @@ class FZBoost(CatEstimator):
     """
     name = 'FZBoost'
     config_options = CatEstimator.config_options.copy()
-    config_options.update(nzbins=Param(int, 301, msg="The number of gridpoints in the z grid"),
-                          nondetect_val=Param(float, 99.0, msg="value to be replaced with magnitude limit for non detects"),
-                          bands=Param(list, def_bands, msg="bands to use in estimation"),
-                          err_bands=Param(list, def_err_bands, msg="error column names to use in estimation"),
-                          ref_band=Param(str, "mag_i_lsst", msg="band to use in addition to colors"),
-                          mag_limits=Param(dict, def_maglims, msg="1 sigma mag limits"),
+    config_options.update(nzbins=SHARED_PARAMS,
+                          nondetect_val=SHARED_PARAMS,
+                          mag_limits=SHARED_PARAMS,
+                          bands=SHARED_PARAMS,
+                          err_bands=SHARED_PARAMS,
+                          ref_band=SHARED_PARAMS,
                           qp_representation=Param(str, "interp", msg="qp generator to use. [interp|flexzboost]")
                           )
 
