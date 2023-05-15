@@ -21,6 +21,7 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "flexcode",
+    "pandas",
     "pz-rail",
     "qp-flexzboost",
     "scikit-learn",

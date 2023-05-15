@@ -7,6 +7,7 @@ p(z) shape) via cde-loss over a grid.
 """
 
 import numpy as np
+import pandas as pd
 import qp
 import qp_flexzboost
 from ceci.config import StageParameter as Param
@@ -15,7 +16,7 @@ from rail.estimation.estimator import CatEstimator, CatInformer
 from rail.core.common_params import SHARED_PARAMS
 
 
-def make_color_data(data_dict, bands, err_bands, ref_band, nondetect_val, maglimdict):
+def make_color_data(data_dict, bands, err_bands, ref_band):
     """
     make a dataset consisting of the i-band mag and the five colors.
 
@@ -31,40 +32,13 @@ def make_color_data(data_dict, bands, err_bands, ref_band, nondetect_val, maglim
       array of imag and 5 colors
     """
     input_data = data_dict[ref_band]
-    # make colors and append to input data
-    for i in range(len(bands)-1):
-        band1name = bands[i]
-        band2name = bands[i+1]
-        err1name = err_bands[i]
-        err2name = err_bands[i+1]
-        band1 = data_dict[band1name]
-        band1err = data_dict[err1name]
-        band2 = data_dict[band2name]
-        band2err = data_dict[err2name]
-        for j, xx in enumerate(band1):
-            if np.isnan(nondetect_val): # pragma: no cover
-                if np.isnan(xx):
-                    band1[j] = maglimdict[band1name]
-                    band1err[j] = 1.0
-            else:
-                if np.isclose(xx, nondetect_val, atol=.01):
-                    band1[j] = maglimdict[band1name]
-                    band1err[j] = 1.0
-        for j, xx in enumerate(band2):
-            if np.isnan(nondetect_val): # pragma: no cover
-                if np.isnan(xx):
-                    band2[j] = maglimdict[band2name]
-                    band2err[j] = 1.0
-            else:
-                if np.isclose(xx, 99., atol=0.01):  #pragma: no cover
-                    band2[j] = maglimdict[band2name]
-                    band2err[j] = 1.0
-
-        input_data = np.vstack((input_data, band1-band2))
-        color_err = np.sqrt((band1err)**2 + (band2err)**2)
-        input_data = np.vstack((input_data, color_err))
+    nbands = len(bands) - 1
+    for i in range(nbands):
+        color = data_dict[bands[i]] - data_dict[bands[i+1]]
+        input_data = np.vstack((input_data, color))
+        colorerr = np.sqrt(data_dict[err_bands[i]]**2 + data_dict[err_bands[i+1]]**2)
+        np.vstack((input_data, colorerr))
     return input_data.T
-
 
 
 class Inform_FZBoost(CatInformer):
@@ -80,7 +54,7 @@ class Inform_FZBoost(CatInformer):
                           bands=SHARED_PARAMS,
                           err_bands=SHARED_PARAMS,
                           ref_band=SHARED_PARAMS,
-                          redshift_col=SHARED_PARAMS,    
+                          redshift_col=SHARED_PARAMS,
                           trainfrac=Param(float, 0.75,
                                           msg="fraction of training "
                                           "data to use for training (rest used for bump thresh "
@@ -102,7 +76,6 @@ class Inform_FZBoost(CatInformer):
                                                   msg="dictionary of options passed to flexcode, includes "
                                                   "max_depth (int), and objective, which should be set "
                                                   " to reg:squarederror"))
-
 
     def __init__(self, args, comm=None):
         """ Constructor
@@ -138,13 +111,33 @@ class Inform_FZBoost(CatInformer):
 
         if self.config.hdf5_groupname:
             training_data = self.get_data('input')[self.config.hdf5_groupname]
-        else:  #pragma: no cover
+        else:  # pragma: no cover
             training_data = self.get_data('input')
-        speczs = training_data[self.config['redshift_col']]
+        speczs = np.array(training_data[self.config['redshift_col']])
+
+        # replace nondetects
+        for bandname, errname in zip(self.config.bands, self.config.err_bands):
+            if np.isnan(self.config.nondetect_val):  # pragma: no cover
+                detmask = np.isnan(training_data[bandname])
+                if isinstance(training_data, pd.DataFrame):
+                    training_data.loc[detmask, bandname] = self.config.mag_limits[bandname]
+                    training_data.loc[detmask, errname] = 1.0
+                else:
+                    detmask = np.isnan(training_data[bandname])
+                    training_data[bandname][detmask] = self.config.mag_limits[bandname]
+                    training_data[errname][detmask] = 1.0
+            else:
+                detmask = np.isclose(training_data[bandname], self.config.nondetect_val, atol=0.01)
+                if isinstance(training_data, pd.DataFrame):  # pragma: no cover
+                    training_data.loc[detmask, bandname] = self.config.mag_limits[bandname]
+                    training_data.loc[detmask, errname] = 1.0
+                else:
+                    training_data[bandname][detmask] = self.config.mag_limits[bandname]
+                    training_data[errname][detmask] = 1.0
+
         print("stacking some data...")
         color_data = make_color_data(training_data, self.config.bands, self.config.err_bands,
-                                     self.config.ref_band, self.config.nondetect_val,
-                                     self.config.mag_limits)
+                                     self.config.ref_band)
         train_dat, val_dat, train_sz, val_sz = self.split_data(color_data,
                                                                speczs,
                                                                self.config.trainfrac)
@@ -207,9 +200,29 @@ class FZBoost(CatEstimator):
 
     def _process_chunk(self, start, end, data, first):
         print(f"Process {self.rank} estimating PZ PDF for rows {start:,} - {end:,}")
+
+        # replace nondetects
+        for bandname, errname in zip(self.config.bands, self.config.err_bands):
+            if np.isnan(self.config.nondetect_val):  # pragma: no cover
+                detmask = np.isnan(data[bandname])
+                if isinstance(data, pd.DataFrame):
+                    data.loc[detmask, bandname] = self.config.mag_limits[bandname]
+                    data.loc[detmask, errname] = 1.0
+                else:
+                    detmask = np.isnan(data[bandname])
+                    data[bandname][detmask] = self.config.mag_limits[bandname]
+                    data[errname][detmask] = 1.0
+            else:
+                detmask = np.isclose(data[bandname], self.config.nondetect_val, atol=0.01)
+                if isinstance(data, pd.DataFrame):  # pragma: no cover
+                    data.loc[detmask, bandname] = self.config.mag_limits[bandname]
+                    data.loc[detmask, errname] = 1.0
+                else:
+                    data[bandname][detmask] = self.config.mag_limits[bandname]
+                    data[errname][detmask] = 1.0
+
         color_data = make_color_data(data, self.config.bands, self.config.err_bands,
-                                     self.config.ref_band, self.config.nondetect_val,
-                                     self.config.mag_limits)
+                                     self.config.ref_band)
 
         if self.config.qp_representation == 'interp':
             pdfs, z_grid = self.model.predict(color_data, n_grid=self.config.nzbins)
