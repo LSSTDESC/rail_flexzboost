@@ -59,6 +59,7 @@ class Inform_FZBoost(CatInformer):
                                           msg="fraction of training "
                                           "data to use for training (rest used for bump thresh "
                                           "and sharpening determination)"),
+                          seed=Param(int, 1138, msg="Random number seed"),
                           bumpmin=Param(float, 0.02,
                                         msg="minimum value in grid of "
                                         "thresholds checked to optimize removal of spurious "
@@ -85,7 +86,7 @@ class Inform_FZBoost(CatInformer):
             raise ValueError("ref_band not present in bands list! ")
 
     @staticmethod
-    def split_data(fz_data, sz_data, trainfrac):
+    def split_data(fz_data, sz_data, trainfrac, seed):
         """
         make a random partition of the training data into training and
         validation, validation data will be used to determine bump
@@ -94,8 +95,8 @@ class Inform_FZBoost(CatInformer):
         nobs = fz_data.shape[0]
         ntrain = round(nobs * trainfrac)
         # set a specific seed for reproducibility
-        np.random.seed(1138)
-        perm = np.random.permutation(nobs)
+        rng = np.random.default_rng(seed=seed)
+        perm = rng.permutation(nobs)
         x_train = fz_data[perm[:ntrain], :]
         z_train = sz_data[perm[:ntrain]]
         x_val = fz_data[perm[ntrain:]]
@@ -140,7 +141,8 @@ class Inform_FZBoost(CatInformer):
                                      self.config.ref_band)
         train_dat, val_dat, train_sz, val_sz = self.split_data(color_data,
                                                                speczs,
-                                                               self.config.trainfrac)
+                                                               self.config.trainfrac,
+                                                               self.config.seed)
         print("read in training data")
         model = flexcode.FlexCodeModel(XGBoost, max_basis=self.config.max_basis,
                                        basis_system=self.config.basis_system,
