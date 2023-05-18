@@ -34,9 +34,9 @@ def make_color_data(data_dict, bands, err_bands, ref_band):
     input_data = data_dict[ref_band]
     nbands = len(bands) - 1
     for i in range(nbands):
-        color = data_dict[bands[i]] - data_dict[bands[i+1]]
+        color = data_dict[bands[i]] - data_dict[bands[i + 1]]
         input_data = np.vstack((input_data, color))
-        colorerr = np.sqrt(data_dict[err_bands[i]]**2 + data_dict[err_bands[i+1]]**2)
+        colorerr = np.sqrt(data_dict[err_bands[i]]**2 + data_dict[err_bands[i + 1]]**2)
         np.vstack((input_data, colorerr))
     return input_data.T
 
@@ -229,6 +229,7 @@ class FZBoost(CatEstimator):
         if self.config.qp_representation == 'interp':
             pdfs, z_grid = self.model.predict(color_data, n_grid=self.config.nzbins)
             self.zgrid = np.array(z_grid).flatten()
+            zmode = np.expand_dims(self.zgrid[np.argmax(pdfs, axis=1)], -1)
             qp_dstn = qp.Ensemble(qp.interp, data=dict(xvals=self.zgrid, yvals=pdfs))
 
         elif self.config.qp_representation == 'flexzboost':
@@ -241,10 +242,10 @@ class FZBoost(CatEstimator):
             # array of linearly spaced values. We then flatten that nested array.
             # so the final output will have the form `[0.0, 0.1, ..., 3.0]`.
             self.zgrid = np.array(make_grid(self.config.nzbins, basis_coefficients.z_min, basis_coefficients.z_max)).flatten()
+            zmode = qp_dstn.mode(grid=self.zgrid)
 
         else:
             raise ValueError(f"Unknown qp_representation in config: {self.config.qp_representation}. Should be one of [interp|flexzboost]")
 
-        zmode = qp_dstn.mode(grid=self.zgrid)
         qp_dstn.set_ancil(dict(zmode=zmode))
         self._do_chunk_output(qp_dstn, start, end, first)
