@@ -55,6 +55,9 @@ class Inform_FZBoost(CatInformer):
                           err_bands=SHARED_PARAMS,
                           ref_band=SHARED_PARAMS,
                           redshift_col=SHARED_PARAMS,
+                          retrain_full=Param(bool, True, msg="if True, re-run the fit with the full training set, "
+                                             "including data set aside for bump/sharpen validation.  If False, only"
+                                             " use the subset defined via trainfrac fraction"),
                           trainfrac=Param(float, 0.75,
                                           msg="fraction of training "
                                           "data to use for training (rest used for bump thresh "
@@ -174,6 +177,15 @@ class Inform_FZBoost(CatInformer):
                 bestloss = tmploss
                 bestsharp = sharp
         model.sharpen_alpha = bestsharp
+
+        # retrain with full dataset or not
+        if self.config.retrain_full:
+            print("Retraining with full training set...")
+            model.fit(color_data, speczs)
+        else:  # pragma: no cover
+            print(f"Skipping retraining, only fraction {self.config.trainfrac}"
+                  "of training data used when training model")
+
         self.model = model
         self.add_data('model', self.model)
 
