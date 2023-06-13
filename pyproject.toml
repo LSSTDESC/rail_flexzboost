@@ -21,8 +21,10 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "flexcode",
+    "h5py",
     "pandas",
-    "pz-rail",
+    "pz-rail-base",
+    "qp-prob[full]",
     "qp-flexzboost",
     "scikit-learn",
     "xgboost"
@@ -31,9 +33,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "coverage",
-    "ipykernel",
     "matplotlib",
-    "numpy",
     "pylint",
     "pytest",
     "pytest-cov",
