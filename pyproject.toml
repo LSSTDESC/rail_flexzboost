@@ -22,7 +22,8 @@ dynamic = ["version"]
 dependencies = [
     "flexcode",
     "pandas",
-    "pz-rail",
+    "pz-rail@git+https://github.com/LSSTDESC/RAIL.git@eac/minimal#egg=pz-rail",
+    "qp-prob[full]",
     "qp-flexzboost",
     "scikit-learn",
     "xgboost"
@@ -31,9 +32,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "coverage",
-    "ipykernel",
     "matplotlib",
-    "numpy",
     "pylint",
     "pytest",
     "pytest-cov",
