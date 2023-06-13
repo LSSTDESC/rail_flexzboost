@@ -21,6 +21,7 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "flexcode",
+    "h5py",
     "pandas",
     "pz-rail-base",
     "qp-prob[full]",
