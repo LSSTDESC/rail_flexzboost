@@ -31,8 +31,8 @@ def test_flexzboost():
                          'model': 'model.tmp'}
     # zb_expected = np.array([0.13, 0.13, 0.13, 0.12, 0.12, 0.13, 0.12, 0.13,
     #                         0.12, 0.12])
-    train_algo = flexzboost.Inform_FZBoost
-    pz_algo = flexzboost.FZBoost
+    train_algo = flexzboost.FlexZBoostInformer
+    pz_algo = flexzboost.FlexZBoostEstimator
     results, rerun_results, rerun3_results = one_algo("FZBoost", train_algo, pz_algo, train_config_dict, estim_config_dict)
     # assert np.isclose(results.ancil['zmode'], zb_expected).all()
     assert np.isclose(results.ancil['zmode'], rerun_results.ancil['zmode']).all()
@@ -54,8 +54,8 @@ def test_flexzboost_with_interp():
                          'qp_representation': 'interp'}
     # zb_expected = np.array([0.13, 0.13, 0.13, 0.12, 0.12, 0.13, 0.12, 0.13,
     #                         0.12, 0.12])
-    train_algo = flexzboost.Inform_FZBoost
-    pz_algo = flexzboost.FZBoost
+    train_algo = flexzboost.FlexZBoostInformer
+    pz_algo = flexzboost.FlexZBoostEstimator
     results, rerun_results, rerun3_results = one_algo("FZBoost", train_algo, pz_algo, train_config_dict, estim_config_dict)
     # assert np.isclose(results.ancil['zmode'], zb_expected).all()
     assert np.isclose(results.ancil['zmode'], rerun_results.ancil['zmode']).all()
@@ -77,8 +77,8 @@ def test_flexzboost_with_qp_flexzboost():
                          'qp_representation': 'flexzboost'}
     # zb_expected = np.array([0.13, 0.13, 0.13, 0.12, 0.12, 0.13, 0.12, 0.13,
     #                         0.12, 0.12])
-    train_algo = flexzboost.Inform_FZBoost
-    pz_algo = flexzboost.FZBoost
+    train_algo = flexzboost.FlexZBoostInformer
+    pz_algo = flexzboost.FlexZBoostEstimator
     results, rerun_results, rerun3_results = one_algo("FZBoost", train_algo, pz_algo, train_config_dict, estim_config_dict)
     # assert np.isclose(results.ancil['zmode'], zb_expected).all()
     assert np.isclose(results.ancil['zmode'], rerun_results.ancil['zmode']).all()
@@ -101,8 +101,8 @@ def test_flexzboost_with_unknown_qp_representation():
                          'qp_representation': 'bogus'}
     # zb_expected = np.array([0.13, 0.13, 0.13, 0.12, 0.12, 0.13, 0.12, 0.13,
     #                         0.12, 0.12])
-    train_algo = flexzboost.Inform_FZBoost
-    pz_algo = flexzboost.FZBoost
+    train_algo = flexzboost.FlexZBoostInformer
+    pz_algo = flexzboost.FlexZBoostEstimator
     with pytest.raises(ValueError) as excinfo:
         one_algo("FZBoost", train_algo, pz_algo, train_config_dict, estim_config_dict)
         assert "Unknown qp_representation" in str(excinfo.value)
@@ -110,9 +110,9 @@ def test_flexzboost_with_unknown_qp_representation():
 def test_catch_bad_bands():
     params = dict(bands='u,g,r,i,z,y')
     with pytest.raises(ValueError):
-        flexzboost.Inform_FZBoost.make_stage(hdf5_groupname='', **params)
+        flexzboost.FlexZBoostInformer.make_stage(hdf5_groupname='', **params)
     with pytest.raises(ValueError):
-        flexzboost.FZBoost.make_stage(hdf5_groupname='', **params)
+        flexzboost.FlexZBoostEstimator.make_stage(hdf5_groupname='', **params)
 
 
 def test_missing_groupname_keyword():
@@ -126,7 +126,7 @@ def test_missing_groupname_keyword():
                                              'objective':
                                              'reg:squarederror'}}
     with pytest.raises(ValueError):
-        _ = flexzboost.FZBoost.make_stage(**config_dict)
+        _ = flexzboost.FlexZBoostEstimator.make_stage(**config_dict)
 
 
 def test_wrong_modelfile_keyword():
@@ -143,5 +143,5 @@ def test_wrong_modelfile_keyword():
                                              'reg:squarederror'},
                    'model': 'nonexist.pkl'}
     with pytest.raises(FileNotFoundError):
-        pz_algo = flexzboost.FZBoost.make_stage(**config_dict)
+        pz_algo = flexzboost.FlexZBoostEstimator.make_stage(**config_dict)
         assert pz_algo.model is None
