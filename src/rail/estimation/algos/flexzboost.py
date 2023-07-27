@@ -238,10 +238,15 @@ class FZBoost(CatEstimator):
         color_data = make_color_data(data, self.config.bands, self.config.err_bands,
                                      self.config.ref_band)
 
+        ancil_dictionary = dict()
+
         if self.config.qp_representation == 'interp':
             pdfs, z_grid = self.model.predict(color_data, n_grid=self.config.nzbins)
             self.zgrid = np.array(z_grid).flatten()
-            zmode = np.expand_dims(self.zgrid[np.argmax(pdfs, axis=1)], -1)
+
+            if 'mode' in self.config.calculated_point_estimates:
+                ancil_dictionary.update(zmode = np.expand_dims(self.zgrid[np.argmax(pdfs, axis=1)], -1))
+
             qp_dstn = qp.Ensemble(qp.interp, data=dict(xvals=self.zgrid, yvals=pdfs))
 
         elif self.config.qp_representation == 'flexzboost':
@@ -250,14 +255,17 @@ class FZBoost(CatEstimator):
                                   data=dict(weights=basis_coefficients.coefs,
                                             basis_coefficients_object=basis_coefficients))
 
-            # `make_grid` is a helper function from Flexcode that will create a nested
-            # array of linearly spaced values. We then flatten that nested array.
-            # so the final output will have the form `[0.0, 0.1, ..., 3.0]`.
-            self.zgrid = np.array(make_grid(self.config.nzbins, basis_coefficients.z_min, basis_coefficients.z_max)).flatten()
-            zmode = qp_dstn.mode(grid=self.zgrid)
+            if 'mode' in self.config.calculated_point_estimates:
+                # `make_grid` is a helper function from Flexcode that will create a nested
+                # array of linearly spaced values. We then flatten that nested array.
+                # so the final output will have the form `[0.0, 0.1, ..., 3.0]`.
+                self.zgrid = np.array(make_grid(self.config.nzbins, basis_coefficients.z_min, basis_coefficients.z_max)).flatten()
+                ancil_dictionary.update(zmode = qp_dstn.mode(grid=self.zgrid))
 
         else:
             raise ValueError(f"Unknown qp_representation in config: {self.config.qp_representation}. Should be one of [interp|flexzboost]")
 
-        qp_dstn.set_ancil(dict(zmode=zmode))
+        if self.config.calculated_point_estimates:
+            qp_dstn.set_ancil(ancil_dictionary)
+
         self._do_chunk_output(qp_dstn, start, end, first)
