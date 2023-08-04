@@ -41,10 +41,10 @@ def make_color_data(data_dict, bands, err_bands, ref_band):
     return input_data.T
 
 
-class Inform_FZBoost(CatInformer):
-    """ Train a FZBoost CatEstimator
+class FlexZBoostInformer(CatInformer):
+    """ Train a FlexZBoost CatInformer
     """
-    name = 'Inform_FZBoost'
+    name = 'FlexZBoostInformer'
     config_options = CatInformer.config_options.copy()
     config_options.update(zmin=SHARED_PARAMS,
                           zmax=SHARED_PARAMS,
@@ -190,10 +190,10 @@ class Inform_FZBoost(CatInformer):
         self.add_data('model', self.model)
 
 
-class FZBoost(CatEstimator):
-    """FZBoost-based CatEstimator
+class FlexZBoostEstimator(CatEstimator):
+    """FlexZBoost-based CatEstimator
     """
-    name = 'FZBoost'
+    name = 'FlexZBoostEstimator'
     config_options = CatEstimator.config_options.copy()
     config_options.update(nzbins=SHARED_PARAMS,
                           nondetect_val=SHARED_PARAMS,
