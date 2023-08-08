@@ -1,13 +1,6 @@
 import numpy as np
-import os
-import sys
-import glob
-import pickle
 import pytest
-import yaml
-import tables_io
 from rail.core.stage import RailStage
-from rail.core.data import DataStore, TableHandle
 from rail.core.algo_utils import one_algo
 from rail.core.utils import RAILDIR
 from rail.estimation.algos import flexzboost
@@ -28,14 +21,15 @@ def test_flexzboost():
                          'hdf5_groupname': 'photometry',
                          'model': 'model.tmp'}
     estim_config_dict = {'hdf5_groupname': 'photometry',
-                         'model': 'model.tmp'}
-    # zb_expected = np.array([0.13, 0.13, 0.13, 0.12, 0.12, 0.13, 0.12, 0.13,
-    #                         0.12, 0.12])
+                         'model': 'model.tmp',
+                         'calculated_point_estimates': ['mode', 'mean']}
+
     train_algo = flexzboost.FlexZBoostInformer
     pz_algo = flexzboost.FlexZBoostEstimator
-    results, rerun_results, rerun3_results = one_algo("FZBoost", train_algo, pz_algo, train_config_dict, estim_config_dict)
-    # assert np.isclose(results.ancil['zmode'], zb_expected).all()
-    assert np.isclose(results.ancil['zmode'], rerun_results.ancil['zmode']).all()
+    results, rerun_results, _ = one_algo("FZBoost", train_algo, pz_algo, train_config_dict, estim_config_dict)
+
+    assert np.isclose(results.ancil['mode'], rerun_results.ancil['mode']).all()
+    assert np.isclose(results.ancil['mean'], rerun_results.ancil['mean']).all()
 
 def test_flexzboost_with_interp():
     train_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
@@ -51,15 +45,19 @@ def test_flexzboost_with_interp():
                          'model': 'model.tmp'}
     estim_config_dict = {'hdf5_groupname': 'photometry',
                          'model': 'model.tmp',
-                         'qp_representation': 'interp'}
-    # zb_expected = np.array([0.13, 0.13, 0.13, 0.12, 0.12, 0.13, 0.12, 0.13,
-    #                         0.12, 0.12])
+                         'qp_representation': 'interp',
+                         'calculated_point_estimates': ['mode', 'mean', 'median']}
+
     train_algo = flexzboost.FlexZBoostInformer
     pz_algo = flexzboost.FlexZBoostEstimator
-    results, rerun_results, rerun3_results = one_algo("FZBoost", train_algo, pz_algo, train_config_dict, estim_config_dict)
-    # assert np.isclose(results.ancil['zmode'], zb_expected).all()
-    assert np.isclose(results.ancil['zmode'], rerun_results.ancil['zmode']).all()
+    results, rerun_results, _ = one_algo("FZBoost", train_algo, pz_algo, train_config_dict, estim_config_dict)
 
+    assert np.isclose(results.ancil['mode'], rerun_results.ancil['mode']).all()
+    assert np.isclose(results.ancil['mean'], rerun_results.ancil['mean']).all()
+    assert np.isclose(results.ancil['median'], rerun_results.ancil['median']).all()
+
+
+@pytest.mark.slow
 def test_flexzboost_with_qp_flexzboost():
     train_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
                          'trainfrac': 0.75, 'bumpmin': 0.02,
@@ -74,14 +72,17 @@ def test_flexzboost_with_qp_flexzboost():
                          'model': 'model.tmp'}
     estim_config_dict = {'hdf5_groupname': 'photometry',
                          'model': 'model.tmp',
-                         'qp_representation': 'flexzboost'}
-    # zb_expected = np.array([0.13, 0.13, 0.13, 0.12, 0.12, 0.13, 0.12, 0.13,
-    #                         0.12, 0.12])
+                         'qp_representation': 'flexzboost',
+                         'calculated_point_estimates': ['mode', 'mean', 'median']}
+
     train_algo = flexzboost.FlexZBoostInformer
     pz_algo = flexzboost.FlexZBoostEstimator
-    results, rerun_results, rerun3_results = one_algo("FZBoost", train_algo, pz_algo, train_config_dict, estim_config_dict)
-    # assert np.isclose(results.ancil['zmode'], zb_expected).all()
-    assert np.isclose(results.ancil['zmode'], rerun_results.ancil['zmode']).all()
+    results, rerun_results, _ = one_algo("FZBoost", train_algo, pz_algo, train_config_dict, estim_config_dict)
+
+    assert np.isclose(results.ancil['mode'], rerun_results.ancil['mode']).all()
+    assert np.isclose(results.ancil['mean'], rerun_results.ancil['mean']).all()
+    assert np.isclose(results.ancil['median'], rerun_results.ancil['median']).all()
+
 
 def test_flexzboost_with_unknown_qp_representation():
     """Pass a bogus qp_representation string to the config, expect a ValueError"""
@@ -99,8 +100,7 @@ def test_flexzboost_with_unknown_qp_representation():
     estim_config_dict = {'hdf5_groupname': 'photometry',
                          'model': 'model.tmp',
                          'qp_representation': 'bogus'}
-    # zb_expected = np.array([0.13, 0.13, 0.13, 0.12, 0.12, 0.13, 0.12, 0.13,
-    #                         0.12, 0.12])
+
     train_algo = flexzboost.FlexZBoostInformer
     pz_algo = flexzboost.FlexZBoostEstimator
     with pytest.raises(ValueError) as excinfo:
