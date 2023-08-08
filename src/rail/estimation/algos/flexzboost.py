@@ -240,7 +240,9 @@ class FlexZBoostEstimator(CatEstimator):
 
         ancil_dictionary = dict()
 
-        calculated_point_estimates = self.config.get('calculated_point_estimates', [])
+        calculated_point_estimates = []
+        if 'calculated_point_estimates' in self.config:
+            calculated_point_estimates = self.config.calculated_point_estimates
 
         if self.config.qp_representation == 'interp':
             pdfs, z_grid = self.model.predict(color_data, n_grid=self.config.nzbins)
