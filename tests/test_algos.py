@@ -114,8 +114,9 @@ def test_catch_bad_bands():
     with pytest.raises(ValueError):
         flexzboost.FlexZBoostEstimator.make_stage(hdf5_groupname='', **params)
 
-
 def test_missing_groupname_keyword():
+    """hdf5_groupname will default to 'photometry'."""
+
     config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
                    'trainfrac': 0.75, 'bumpmin': 0.02,
                    'bumpmax': 0.35, 'nbump': 3,
@@ -125,9 +126,8 @@ def test_missing_groupname_keyword():
                    'regression_params': {'max_depth': 8,
                                              'objective':
                                              'reg:squarederror'}}
-    with pytest.raises(ValueError):
-        _ = flexzboost.FlexZBoostEstimator.make_stage(**config_dict)
-
+    stage = flexzboost.FlexZBoostEstimator.make_stage(**config_dict)
+    assert stage.config_options['hdf5_groupname'] == "photometry"
 
 def test_wrong_modelfile_keyword():
     RailStage.data_store.clear()
