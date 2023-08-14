@@ -281,7 +281,7 @@ class FlexZBoostEstimator(CatEstimator):
         else:
             raise ValueError(f"Unknown qp_representation in config: {self.config.qp_representation}. Should be one of [interp|flexzboost]")
 
-        if self.config.calculated_point_estimates:
+        if calculated_point_estimates:
             qp_dstn.set_ancil(ancil_dictionary)
 
         self._do_chunk_output(qp_dstn, start, end, first)
