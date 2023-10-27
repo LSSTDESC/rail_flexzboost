@@ -1,34 +1,58 @@
-[![DOI](https://zenodo.org/badge/223043497.svg)](https://zenodo.org/badge/latestdoi/223043497)
-[![PyPI](https://img.shields.io/pypi/v/pz-rail-flexzboost?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/pz-rail-flexzboost/)
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/LSSTDESC/rail_flexzboost/main.yml)](https://github.com/LSSTDESC/rail_flexzboost/actions/workflows/main.yml)
+# pz-rail-flexzboost
 
-# rail_flexzboost
+[![Template](https://img.shields.io/badge/Template-LINCC%20Frameworks%20Python%20Project%20Template-brightgreen)](https://lincc-ppt.readthedocs.io/en/latest/)
+[![codecov](https://codecov.io/gh/LSSTDESC/pz-rail-flexzboost/branch/main/graph/badge.svg)](https://codecov.io/gh/LSSTDESC/pz-rail-flexzboost)
+[![PyPI](https://img.shields.io/pypi/v/flexzboost?color=blue&logo=pypi&logoColor=white)](https://pypi.org/project/flexzboost/)
 
-RAIL interface to Flexzboost algorithms
+## TODO List
 
-**FlexZBoost** - A machine learning-based photo-z estimator utilizing a fourier basis
+To ensure that your project and repository is stable from the very start there 
+are a few todo items that you should take care of. Unfortunately the RAIL project
+template can not do these for you, otherwise it would :) 
 
-# RAIL: Redshift Assessment Infrastructure Layers
+### Immediate actions
+- In your repository settings:
+  -  Grant the `LSSTDESC/rail_admin` group administrator access
+  -  Grant the `LSSTDESC/photo-z` group maintainer access
+- Configure Codecov for the repository
+  - Go here, https://github.com/apps/codecov, click the "Configure" button
+- Log in to PyPI.org and configure Trusted Publishing following these instructions https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/
+- Create a Personal Access Token (PAT) to automatically add issues to the RAIL project tracker
+  - Follow these instruction to create a PAT: https://github.com/actions/add-to-project#creating-a-pat-and-adding-it-to-your-repository 
+  - Save your new PAT as a repository secret named `ADD_TO_PROJECT_PAT`
 
-RAIL is a flexible software library providing tools to produce at-scale photometric redshift data products, including uncertainties and summary statistics, and stress-test them under realistically complex systematics.
-A detailed description of RAIL's modular structure is available in the [Overview](https://lsstdescrail.readthedocs.io/en/latest/source/overview.html) on ReadTheDocs.
+### Before including in Rail-hub
+- Make sure your `main` branch is protected
+- Update this README
+- Create an example notebook
+- Run `pylint` on your code
+- Remove this TODO list once all items are completed
 
-RAIL serves as the infrastructure supporting many extragalactic applications of the Legacy Survey of Space and Time (LSST) on the Vera C. Rubin Observatory, including Rubin-wide commissioning activities. 
-RAIL was initiated by the Photometric Redshifts (PZ) Working Group (WG) of the LSST Dark Energy Science Collaboration (DESC) as a result of the lessons learned from the [Data Challenge 1 (DC1) experiment](https://academic.oup.com/mnras/article/499/2/1587/5905416) to enable the PZ WG Deliverables in [the LSST-DESC Science Roadmap (see Sec. 5.18)](https://lsstdesc.org/assets/pdf/docs/DESC_SRM_latest.pdf), aiming to guide the selection and implementation of redshift estimators in DESC analysis pipelines.
-RAIL is developed and maintained by a diverse team comprising DESC Pipeline Scientists (PSs), international in-kind contributors, LSST Interdisciplinary Collaboration for Computing (LINCC) Frameworks software engineers, and other volunteers, but all are welcome to join the team regardless of LSST data rights. 
 
-## Installation
+## RAIL: Redshift Assessment Infrastructure Layers
 
-Installation instructions are available under [Installation](https://lsstdescrail.readthedocs.io/en/latest/source/installation.html) on ReadTheDocs.
+This package is part of the larger ecosystem of Photometric Redshifts
+in [RAIL](https://github.com/LSSTDESC/RAIL).
 
-## Contributing
+### Citing RAIL
 
-The greatest strength of RAIL is its extensibility; those interested in contributing to RAIL should start by consulting the [Contributing guidelines](https://lsstdescrail.readthedocs.io/en/latest/source/contributing.html) on ReadTheDocs.
+This code, while public on GitHub, has not yet been released by DESC and is
+still under active development. Our release of v1.0 will be accompanied by a
+journal paper describing the development and validation of RAIL.
 
-## Citing RAIL
+If you make use of the ideas or software in RAIL, please cite the repository 
+<https://github.com/LSSTDESC/RAIL>. You are welcome to re-use the code, which
+is open source and available under terms consistent with the MIT license.
 
-RAIL is open source and may be used according to the terms of its [LICENSE](https://github.com/LSSTDESC/RAIL/blob/main/LICENSE) [(BSD 3-Clause)](https://opensource.org/licenses/BSD-3-Clause).
-If you make use of the ideas or software here in any publication, you must cite this repository <https://github.com/LSSTDESC/RAIL> as "LSST-DESC PZ WG (in prep)" with the [Zenodo DOI](https://doi.org/10.5281/zenodo.7017551).
-Please consider also inviting the developers as co-authors on publications resulting from your use of RAIL by [making an issue](https://github.com/LSSTDESC/RAIL/issues/new/choose).
-Additionally, several of the codes accessible through the RAIL ecosystem must be cited if used in a publication.
-A convenient list of what to cite may be found under [Citing RAIL](https://lsstdescrail.readthedocs.io/en/latest/source/citing.html) on ReadTheDocs.
+External contributors and DESC members wishing to use RAIL for non-DESC projects
+should consult with the Photometric Redshifts (PZ) Working Group conveners,
+ideally before the work has started, but definitely before any publication or 
+posting of the work to the arXiv.
+
+### Citing this package
+
+If you use this package, you should also cite the appropriate papers for each
+code used.  A list of such codes is included in the 
+[Citing RAIL](https://lsstdescrail.readthedocs.io/en/stable/source/citing.html)
+section of the main RAIL Read The Docs page.
+
