@@ -20,7 +20,8 @@ def test_flexzboost():
                                                'reg:squarederror'},
                          'hdf5_groupname': 'photometry',
                          'model': 'model.tmp'}
-    estim_config_dict = {'hdf5_groupname': 'photometry',
+    estim_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
+                         'hdf5_groupname': 'photometry',
                          'model': 'model.tmp',
                          'calculated_point_estimates': ['mode', 'mean']}
 
@@ -43,7 +44,8 @@ def test_flexzboost_with_interp():
                                                'reg:squarederror'},
                          'hdf5_groupname': 'photometry',
                          'model': 'model.tmp'}
-    estim_config_dict = {'hdf5_groupname': 'photometry',
+    estim_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
+                         'hdf5_groupname': 'photometry',
                          'model': 'model.tmp',
                          'qp_representation': 'interp',
                          'calculated_point_estimates': ['mode', 'mean', 'median']}
@@ -70,7 +72,8 @@ def test_flexzboost_with_qp_flexzboost():
                                                'reg:squarederror'},
                          'hdf5_groupname': 'photometry',
                          'model': 'model.tmp'}
-    estim_config_dict = {'hdf5_groupname': 'photometry',
+    estim_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
+                         'hdf5_groupname': 'photometry',
                          'model': 'model.tmp',
                          'qp_representation': 'flexzboost',
                          'calculated_point_estimates': ['mode', 'mean', 'median']}
