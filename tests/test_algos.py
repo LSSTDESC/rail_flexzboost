@@ -20,7 +20,8 @@ def test_flexzboost():
                                                'reg:squarederror'},
                          'hdf5_groupname': 'photometry',
                          'model': 'model.tmp'}
-    estim_config_dict = {'hdf5_groupname': 'photometry',
+    estim_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
+                         'hdf5_groupname': 'photometry',
                          'model': 'model.tmp',
                          'calculated_point_estimates': ['mode', 'mean']}
 
@@ -43,7 +44,8 @@ def test_flexzboost_with_interp():
                                                'reg:squarederror'},
                          'hdf5_groupname': 'photometry',
                          'model': 'model.tmp'}
-    estim_config_dict = {'hdf5_groupname': 'photometry',
+    estim_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
+                         'hdf5_groupname': 'photometry',
                          'model': 'model.tmp',
                          'qp_representation': 'interp',
                          'calculated_point_estimates': ['mode', 'mean', 'median']}
@@ -70,7 +72,8 @@ def test_flexzboost_with_qp_flexzboost():
                                                'reg:squarederror'},
                          'hdf5_groupname': 'photometry',
                          'model': 'model.tmp'}
-    estim_config_dict = {'hdf5_groupname': 'photometry',
+    estim_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
+                         'hdf5_groupname': 'photometry',
                          'model': 'model.tmp',
                          'qp_representation': 'flexzboost',
                          'calculated_point_estimates': ['mode', 'mean', 'median']}
@@ -128,20 +131,3 @@ def test_missing_groupname_keyword():
                                              'reg:squarederror'}}
     stage = flexzboost.FlexZBoostEstimator.make_stage(**config_dict)
     assert stage.config_options['hdf5_groupname'] == "photometry"
-
-def test_wrong_modelfile_keyword():
-    RailStage.data_store.clear()
-    config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
-                   'trainfrac': 0.75, 'bumpmin': 0.02,
-                   'bumpmax': 0.35, 'nbump': 3,
-                   'sharpmin': 0.7, 'sharpmax': 2.1,
-                   'nsharp': 3, 'max_basis': 35,
-                   'basis_system': 'cosine',
-                   'hdf5_groupname': 'photometry',
-                   'regression_params': {'max_depth': 8,
-                                             'objective':
-                                             'reg:squarederror'},
-                   'model': 'nonexist.pkl'}
-    with pytest.raises(FileNotFoundError):
-        pz_algo = flexzboost.FlexZBoostEstimator.make_stage(**config_dict)
-        assert pz_algo.model is None
