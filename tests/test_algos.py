@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from rail.core.stage import RailStage
 from rail.utils.algo_utils import one_algo
-from rail.core.common_params import RAILDIR
+from rail.utils.path_utils import RAILDIR
 from rail.estimation.algos import flexzboost
 import scipy.special
 sci_ver_str = scipy.__version__.split('.')
