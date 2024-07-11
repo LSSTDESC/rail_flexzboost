@@ -84,7 +84,7 @@ class FlexZBoostInformer(CatInformer):
     def __init__(self, args, **kwargs):
         """ Constructor
         Do CatInformer specific initialization, then check on bands """
-        super().__init__(self, args, **kwargs)
+        super().__init__(args, **kwargs)
         if self.config.ref_band not in self.config.bands:
             raise ValueError("ref_band not present in bands list! ")
 
@@ -207,7 +207,7 @@ class FlexZBoostEstimator(CatEstimator):
     def __init__(self, args, **kwargs):
         """ Constructor:
         Do CatEstimator specific initialization """
-        super().__init__(self, args, **kwargs)
+        super().__init__(args, **kwargs)
         if self.config.ref_band not in self.config.bands:
             raise ValueError("ref_band not present in bands list! ")
         self.zgrid = None
