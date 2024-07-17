@@ -20,7 +20,7 @@ dependencies = [
     "flexcode",
     "h5py",
     "pandas",
-    "pz_rail_base @ git+https://github.com/LSSTDESC/rail_base@ceci2",
+    "pz_rail_base",
     "qp-prob[full]",
     "qp-flexzboost",
     "scikit-learn",
