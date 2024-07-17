@@ -81,10 +81,10 @@ class FlexZBoostInformer(CatInformer):
                                                   "max_depth (int), and objective, which should be set "
                                                   " to reg:squarederror"))
 
-    def __init__(self, args, comm=None):
+    def __init__(self, args, **kwargs):
         """ Constructor
         Do CatInformer specific initialization, then check on bands """
-        CatInformer.__init__(self, args, comm=comm)
+        super().__init__(args, **kwargs)
         if self.config.ref_band not in self.config.bands:
             raise ValueError("ref_band not present in bands list! ")
 
@@ -204,10 +204,10 @@ class FlexZBoostEstimator(CatEstimator):
                           qp_representation=Param(str, "interp", msg="qp generator to use. [interp|flexzboost]")
                           )
 
-    def __init__(self, args, comm=None):
+    def __init__(self, args, **kwargs):
         """ Constructor:
         Do CatEstimator specific initialization """
-        CatEstimator.__init__(self, args, comm=comm)
+        super().__init__(args, **kwargs)
         if self.config.ref_band not in self.config.bands:
             raise ValueError("ref_band not present in bands list! ")
         self.zgrid = None
