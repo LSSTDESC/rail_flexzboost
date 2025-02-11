@@ -37,7 +37,7 @@ def make_color_data(data_dict, bands, err_bands, ref_band):
         color = data_dict[bands[i]] - data_dict[bands[i + 1]]
         input_data = np.vstack((input_data, color))
         colorerr = np.sqrt(data_dict[err_bands[i]]**2 + data_dict[err_bands[i + 1]]**2)
-        np.vstack((input_data, colorerr))
+        input_data = np.vstack((input_data, colorerr))
     return input_data.T
 
 
