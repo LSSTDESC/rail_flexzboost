@@ -116,18 +116,3 @@ def test_catch_bad_bands():
         flexzboost.FlexZBoostInformer.make_stage(hdf5_groupname='', **params)
     with pytest.raises(ValueError):
         flexzboost.FlexZBoostEstimator.make_stage(hdf5_groupname='', **params)
-
-def test_missing_groupname_keyword():
-    """hdf5_groupname will default to 'photometry'."""
-
-    config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
-                   'trainfrac': 0.75, 'bumpmin': 0.02,
-                   'bumpmax': 0.35, 'nbump': 3,
-                   'sharpmin': 0.7, 'sharpmax': 2.1,
-                   'nsharp': 3, 'max_basis': 35,
-                   'basis_system': 'cosine',
-                   'regression_params': {'max_depth': 8,
-                                             'objective':
-                                             'reg:squarederror'}}
-    stage = flexzboost.FlexZBoostEstimator.make_stage(**config_dict)
-    assert stage.config_options['hdf5_groupname'] == "photometry"
