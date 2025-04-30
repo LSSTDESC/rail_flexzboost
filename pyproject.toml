@@ -21,7 +21,7 @@ dependencies = [
     "h5py",
     "pandas",
     "pz-rail-base>=1.0.3",
-    "qp-prob>=1.0.0",
+    "qp-prob[full]>=1.0.0",
     "qp-flexzboost",
     "scikit-learn",
     "xgboost"
