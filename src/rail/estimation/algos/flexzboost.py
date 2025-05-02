@@ -14,7 +14,6 @@ from ceci.config import StageParameter as Param
 from flexcode.helpers import make_grid
 from rail.estimation.estimator import CatEstimator, CatInformer
 from rail.core.common_params import SHARED_PARAMS
-from time import time, sleep
 import copy
 import multiprocessing
 
@@ -130,8 +129,6 @@ class FlexZBoostInformer(CatInformer):
         self.cde_loss=cde_loss
 
         if self.rank == 0:
-            start=time()
-
             if self.config.hdf5_groupname:
                 training_data = self.get_data('input')[self.config.hdf5_groupname]
             else:  # pragma: no cover
@@ -172,8 +169,6 @@ class FlexZBoostInformer(CatInformer):
                                            regression_params=self.config.regression_params)
             print("fit the model...")
             model.fit(train_dat, train_sz)
-            print('hasta aca llevamos1',time()-start)
-            start=time()
             print("finding best bump thresh...")
         else:
             model = None
@@ -205,10 +200,6 @@ class FlexZBoostInformer(CatInformer):
             bestloss = min(loss_list)
             bestbump = bump_grid[loss_list.index(bestloss)]
             model.bump_threshold = bestbump
-            # sleep(10)
-            print('hasta aca llevamos2',time()-start)
-            start=time()
-
 
             print("finding best sharpen parameter...")
         sharpen_grid = np.linspace(self.config.sharpmin, self.config.sharpmax, self.config.nsharp)
@@ -231,8 +222,6 @@ class FlexZBoostInformer(CatInformer):
             bestloss = min(loss_list)
             bestsharp = sharpen_grid[loss_list.index(bestloss)]
             model.sharpen_alpha = bestsharp
-            print('hasta aca llevamos3',time()-start)
-            start=time()
             # retrain with full dataset or not
             if self.config.retrain_full:
                 print("Retraining with full training set...")
@@ -240,8 +229,6 @@ class FlexZBoostInformer(CatInformer):
             else:  # pragma: no cover
                 print(f"Skipping retraining, only fraction {self.config.trainfrac}"
                       "of training data used when training model")
-            print('hasta aca llevamos',time()-start)
-            start=time()
             self.model = model
             self.add_data('model', self.model)
 
