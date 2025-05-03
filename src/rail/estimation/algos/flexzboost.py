@@ -169,7 +169,7 @@ class FlexZBoostInformer(CatInformer):
             print("fit the model...")
             model.fit(train_dat, train_sz)
             print("finding best bump thresh...")
-        else:
+        else: #pragma: no cover
             model = None
             val_dat = None
             val_sz = None
