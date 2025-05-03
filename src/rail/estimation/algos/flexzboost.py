@@ -125,7 +125,6 @@ class FlexZBoostInformer(CatInformer):
         import flexcode
         from flexcode.regression_models import XGBoost
         from flexcode.loss_functions import cde_loss
-        import mpi4py as mpi
         self.cde_loss=cde_loss
 
         if self.rank == 0:
