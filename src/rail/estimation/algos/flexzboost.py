@@ -14,7 +14,8 @@ from ceci.config import StageParameter as Param
 from flexcode.helpers import make_grid
 from rail.estimation.estimator import CatEstimator, CatInformer
 from rail.core.common_params import SHARED_PARAMS
-
+import copy
+import multiprocessing
 
 def make_color_data(data_dict, bands, err_bands, ref_band):
     """
@@ -106,88 +107,129 @@ class FlexZBoostInformer(CatInformer):
         z_val = sz_data[perm[ntrain:]]
         return x_train, x_val, z_train, z_val
 
+    def divide_array(self,grid):
+        if self.comm is None:
+            return grid
+        else: # pragma: no cover
+            # Dividing the grid between the different processes
+            if self.rank == 0:
+                grid_partial = np.array_split(grid, self.size)
+            else:
+                grid_partial = None
+            grid_partial = self.comm.scatter(grid_partial)
+            return grid_partial
+
     def run(self):
         """Train flexzboost model model
         """
         import flexcode
         from flexcode.regression_models import XGBoost
         from flexcode.loss_functions import cde_loss
+        self.cde_loss=cde_loss
 
-        if self.config.hdf5_groupname:
-            training_data = self.get_data('input')[self.config.hdf5_groupname]
-        else:  # pragma: no cover
-            training_data = self.get_data('input')
-        speczs = np.array(training_data[self.config['redshift_col']])
+        if self.rank == 0:
+            if self.config.hdf5_groupname:
+                training_data = self.get_data('input')[self.config.hdf5_groupname]
+            else:  # pragma: no cover
+                training_data = self.get_data('input')
+            speczs = np.array(training_data[self.config['redshift_col']])
 
-        # replace nondetects
-        for bandname, errname in zip(self.config.bands, self.config.err_bands):
-            if np.isnan(self.config.nondetect_val):  # pragma: no cover
-                detmask = np.isnan(training_data[bandname])
-                if isinstance(training_data, pd.DataFrame):
-                    training_data.loc[detmask, bandname] = self.config.mag_limits[bandname]
-                    training_data.loc[detmask, errname] = 1.0
-                else:
+            # replace nondetects
+            for bandname, errname in zip(self.config.bands, self.config.err_bands):
+                if np.isnan(self.config.nondetect_val):  # pragma: no cover
                     detmask = np.isnan(training_data[bandname])
-                    training_data[bandname][detmask] = self.config.mag_limits[bandname]
-                    training_data[errname][detmask] = 1.0
-            else:
-                detmask = np.isclose(training_data[bandname], self.config.nondetect_val, atol=0.01)
-                if isinstance(training_data, pd.DataFrame):  # pragma: no cover
-                    training_data.loc[detmask, bandname] = self.config.mag_limits[bandname]
-                    training_data.loc[detmask, errname] = 1.0
+                    if isinstance(training_data, pd.DataFrame):
+                        training_data.loc[detmask, bandname] = self.config.mag_limits[bandname]
+                        training_data.loc[detmask, errname] = 1.0
+                    else:
+                        detmask = np.isnan(training_data[bandname])
+                        training_data[bandname][detmask] = self.config.mag_limits[bandname]
+                        training_data[errname][detmask] = 1.0
                 else:
-                    training_data[bandname][detmask] = self.config.mag_limits[bandname]
-                    training_data[errname][detmask] = 1.0
+                    detmask = np.isclose(training_data[bandname], self.config.nondetect_val, atol=0.01)
+                    if isinstance(training_data, pd.DataFrame):  # pragma: no cover
+                        training_data.loc[detmask, bandname] = self.config.mag_limits[bandname]
+                        training_data.loc[detmask, errname] = 1.0
+                    else:
+                        training_data[bandname][detmask] = self.config.mag_limits[bandname]
+                        training_data[errname][detmask] = 1.0
 
-        print("stacking some data...")
-        color_data = make_color_data(training_data, self.config.bands, self.config.err_bands,
-                                     self.config.ref_band)
-        train_dat, val_dat, train_sz, val_sz = self.split_data(color_data,
-                                                               speczs,
-                                                               self.config.trainfrac,
-                                                               self.config.seed)
-        print("read in training data")
-        model = flexcode.FlexCodeModel(XGBoost, max_basis=self.config.max_basis,
-                                       basis_system=self.config.basis_system,
-                                       z_min=self.config.zmin, z_max=self.config.zmax,
-                                       regression_params=self.config.regression_params)
-        print("fit the model...")
-        model.fit(train_dat, train_sz)
+            print("stacking some data...")
+            color_data = make_color_data(training_data, self.config.bands, self.config.err_bands,
+                                         self.config.ref_band)
+            train_dat, val_dat, train_sz, val_sz = self.split_data(color_data,
+                                                                   speczs,
+                                                                   self.config.trainfrac,
+                                                                   self.config.seed)
+            print("read in training data")
+            model = flexcode.FlexCodeModel(XGBoost, max_basis=self.config.max_basis,
+                                           basis_system=self.config.basis_system,
+                                           z_min=self.config.zmin, z_max=self.config.zmax,
+                                           regression_params=self.config.regression_params)
+            print("fit the model...")
+            model.fit(train_dat, train_sz)
+            print("finding best bump thresh...")
+        else: #pragma: no cover
+            model = None
+            val_dat = None
+            val_sz = None
+        if self.comm is not None:  # pragma: no cover
+            model = self.comm.bcast(model)
+            val_dat = self.comm.bcast(val_dat)
+            val_sz = self.comm.bcast(val_sz)
+
         bump_grid = np.linspace(self.config.bumpmin, self.config.bumpmax, self.config.nbump)
-        print("finding best bump thresh...")
-        bestloss = 9999
-        for bumpt in bump_grid:
+        # Dividing work between the different mpi processes
+        bump_grid_partial = self.divide_array(bump_grid)
+        # All processes do the following procedure
+        loss_list = []
+        for bumpt in bump_grid_partial:
             model.bump_threshold = bumpt
             model.tune(val_dat, val_sz)
             tmpcdes, z_grid = model.predict(val_dat, n_grid=self.config.nzbins)
             tmploss = cde_loss(tmpcdes, z_grid, val_sz)
-            if tmploss < bestloss:
-                bestloss = tmploss
-                bestbump = bumpt
-        model.bump_threshold = bestbump
-        print("finding best sharpen parameter...")
+            loss_list.append(tmploss)
+        # Joining the loss_lists
+        if self.comm is not None:  # pragma: no cover
+            loss_list = self.comm.gather(loss_list)
+        if self.rank == 0:
+            if self.comm is not None:  # pragma: no cover
+                # Flatten list
+                loss_list = [item for sublist in loss_list for item in sublist]
+            bestloss = min(loss_list)
+            bestbump = bump_grid[loss_list.index(bestloss)]
+            model.bump_threshold = bestbump
+
+            print("finding best sharpen parameter...")
         sharpen_grid = np.linspace(self.config.sharpmin, self.config.sharpmax, self.config.nsharp)
-        bestloss = 9999
-        bestsharp = 9999
-        for sharp in sharpen_grid:
+        # Dividing work between the different mpi processes
+        sharpen_grid_partial = self.divide_array(sharpen_grid)
+        # All processes do  the following procedure
+        loss_list = []
+        for sharp in sharpen_grid_partial:
             model.sharpen_alpha = sharp
             tmpcdes, z_grid = model.predict(val_dat, n_grid=301)
             tmploss = cde_loss(tmpcdes, z_grid, val_sz)
-            if tmploss < bestloss:
-                bestloss = tmploss
-                bestsharp = sharp
-        model.sharpen_alpha = bestsharp
-
-        # retrain with full dataset or not
-        if self.config.retrain_full:
-            print("Retraining with full training set...")
-            model.fit(color_data, speczs)
-        else:  # pragma: no cover
-            print(f"Skipping retraining, only fraction {self.config.trainfrac}"
-                  "of training data used when training model")
-
-        self.model = model
-        self.add_data('model', self.model)
+            loss_list.append(tmploss)
+        # Joining the loss_lists
+        if self.comm is not None:  # pragma: no cover
+            loss_list = self.comm.gather(loss_list)
+        if self.rank == 0:
+            if self.comm is not None:  # pragma: no cover
+                # Flatten list
+                loss_list = [item for sublist in loss_list for item in sublist]
+            bestloss = min(loss_list)
+            bestsharp = sharpen_grid[loss_list.index(bestloss)]
+            model.sharpen_alpha = bestsharp
+            # retrain with full dataset or not
+            if self.config.retrain_full:
+                print("Retraining with full training set...")
+                model.fit(color_data, speczs)
+            else:  # pragma: no cover
+                print(f"Skipping retraining, only fraction {self.config.trainfrac}"
+                      "of training data used when training model")
+            self.model = model
+            self.add_data('model', self.model)
 
 
 class FlexZBoostEstimator(CatEstimator):
