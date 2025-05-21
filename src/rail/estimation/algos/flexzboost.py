@@ -303,9 +303,9 @@ class FlexZBoostEstimator(CatEstimator):
 
         elif self.config.qp_representation == 'flexzboost':
             basis_coefficients = self.model.predict_coefs(color_data)
-            qp_dstn = qp.Ensemble(qp_flexzboost.flexzboost_create_from_basis_coef_object,
+            qp_dstn = qp.Ensemble(qp_flexzboost.FlexzboostGen,
                                   data=dict(weights=basis_coefficients.coefs,
-                                            basis_coefficients_object=basis_coefficients))
+                                            basis_coefficients_object=basis_coefficients), method='basis_coef_object')
 
             if 'mode' in calculated_point_estimates:
                 # `make_grid` is a helper function from Flexcode that will create a nested
