@@ -326,4 +326,4 @@ class FlexZBoostEstimator(CatEstimator):
         if calculated_point_estimates:
             qp_dstn.set_ancil(ancil_dictionary)
 
-        self._do_chunk_output(qp_dstn, start, end, first)
+        self._do_chunk_output(qp_dstn, start, end, first, data=data)
