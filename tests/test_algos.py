@@ -58,6 +58,31 @@ def test_flexzboost_with_interp():
     assert np.isclose(results.ancil['mean'], rerun_results.ancil['mean']).all()
     assert np.isclose(results.ancil['median'], rerun_results.ancil['median']).all()
 
+def test_flexzboost_skip_grid():
+    train_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
+                         'trainfrac': 1.0, 'bumpmin': 0.15,
+                         'bumpmax': 0.15, 'nbump': 1,
+                         'sharpmin': 1.4, 'sharpmax': 1.4,
+                         'nsharp': 1, 'max_basis': 35,
+                         'basis_system': 'cosine',
+                         'regression_params': {'max_depth': 8,
+                                               'objective':
+                                               'reg:squarederror'},
+                         'hdf5_groupname': 'photometry',
+                         'model': 'model.tmp'}
+    estim_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
+                         'hdf5_groupname': 'photometry',
+                         'model': 'model.tmp',
+                         'qp_representation': 'interp',
+                         'calculated_point_estimates': ['mode', 'mean', 'median']}
+
+    train_algo = flexzboost.FlexZBoostInformer
+    pz_algo = flexzboost.FlexZBoostEstimator
+    results, rerun_results, _ = one_algo("FZBoostskip", train_algo, pz_algo, train_config_dict, estim_config_dict)
+
+    assert np.isclose(results.ancil['mode'], rerun_results.ancil['mode']).all()
+    assert np.isclose(results.ancil['mean'], rerun_results.ancil['mean']).all()
+    assert np.isclose(results.ancil['median'], rerun_results.ancil['median']).all()
 
 @pytest.mark.slow
 def test_flexzboost_with_qp_flexzboost():

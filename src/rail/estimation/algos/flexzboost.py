@@ -14,8 +14,7 @@ from ceci.config import StageParameter as Param
 from flexcode.helpers import make_grid
 from rail.estimation.estimator import CatEstimator, CatInformer
 from rail.core.common_params import SHARED_PARAMS
-import copy
-import multiprocessing
+
 
 def make_color_data(data_dict, bands, err_bands, ref_band):
     """
@@ -107,10 +106,10 @@ class FlexZBoostInformer(CatInformer):
         z_val = sz_data[perm[ntrain:]]
         return x_train, x_val, z_train, z_val
 
-    def divide_array(self,grid):
+    def divide_array(self, grid):
         if self.comm is None:
             return grid
-        else: # pragma: no cover
+        else:  # pragma: no cover
             # Dividing the grid between the different processes
             if self.rank == 0:
                 grid_partial = np.array_split(grid, self.size)
@@ -125,7 +124,8 @@ class FlexZBoostInformer(CatInformer):
         import flexcode
         from flexcode.regression_models import XGBoost
         from flexcode.loss_functions import cde_loss
-        self.cde_loss=cde_loss
+        self.cde_loss = cde_loss
+        self.do_grid_search = True
 
         if self.rank == 0:
             if self.config.hdf5_groupname:
@@ -157,79 +157,93 @@ class FlexZBoostInformer(CatInformer):
             print("stacking some data...")
             color_data = make_color_data(training_data, self.config.bands, self.config.err_bands,
                                          self.config.ref_band)
-            train_dat, val_dat, train_sz, val_sz = self.split_data(color_data,
-                                                                   speczs,
-                                                                   self.config.trainfrac,
-                                                                   self.config.seed)
-            print("read in training data")
+
             model = flexcode.FlexCodeModel(XGBoost, max_basis=self.config.max_basis,
                                            basis_system=self.config.basis_system,
                                            z_min=self.config.zmin, z_max=self.config.zmax,
                                            regression_params=self.config.regression_params)
-            print("fit the model...")
-            model.fit(train_dat, train_sz)
-            print("finding best bump thresh...")
-        else: #pragma: no cover
+
+            if np.isclose(self.config.trainfrac, 1.0):
+                if self.config.nbump == 1 and self.config.nsharp == 1:
+                    self.do_grid_search = False
+                    print("skipping grid search, setting bump_thresh to bumpmin and sharpen to sharpmin")
+                    model.bump_threshold = self.config.bumpmin
+                    model.sharpen_alpha = self.config.sharpmin
+                    model.fit(color_data, speczs)
+                else:  # pragma: no cover
+                    raise ValueError("trainfrac cannot be 1.0 when a grid search of bump and sharpen are performed, this leads to empty validation arrays!")
+            else:
+                train_dat, val_dat, train_sz, val_sz = self.split_data(color_data,
+                                                                       speczs,
+                                                                       self.config.trainfrac,
+                                                                       self.config.seed)
+                print("read in training data")
+                print("fit the model...")
+                model.fit(train_dat, train_sz)
+                print("finding best bump thresh...")
+        else:  # pragma: no cover
             model = None
             val_dat = None
             val_sz = None
-        if self.comm is not None:  # pragma: no cover
-            model = self.comm.bcast(model)
-            val_dat = self.comm.bcast(val_dat)
-            val_sz = self.comm.bcast(val_sz)
-
-        bump_grid = np.linspace(self.config.bumpmin, self.config.bumpmax, self.config.nbump)
-        # Dividing work between the different mpi processes
-        bump_grid_partial = self.divide_array(bump_grid)
-        # All processes do the following procedure
-        loss_list = []
-        for bumpt in bump_grid_partial:
-            model.bump_threshold = bumpt
-            model.tune(val_dat, val_sz)
-            tmpcdes, z_grid = model.predict(val_dat, n_grid=self.config.nzbins)
-            tmploss = cde_loss(tmpcdes, z_grid, val_sz)
-            loss_list.append(tmploss)
-        # Joining the loss_lists
-        if self.comm is not None:  # pragma: no cover
-            loss_list = self.comm.gather(loss_list)
-        if self.rank == 0:
+        # No need to do the below if there is no grid search
+        if self.do_grid_search:
             if self.comm is not None:  # pragma: no cover
-                # Flatten list
-                loss_list = [item for sublist in loss_list for item in sublist]
-            bestloss = min(loss_list)
-            bestbump = bump_grid[loss_list.index(bestloss)]
-            model.bump_threshold = bestbump
+                model = self.comm.bcast(model)
+                val_dat = self.comm.bcast(val_dat)
+                val_sz = self.comm.bcast(val_sz)
 
-            print("finding best sharpen parameter...")
-        sharpen_grid = np.linspace(self.config.sharpmin, self.config.sharpmax, self.config.nsharp)
-        # Dividing work between the different mpi processes
-        sharpen_grid_partial = self.divide_array(sharpen_grid)
-        # All processes do  the following procedure
-        loss_list = []
-        for sharp in sharpen_grid_partial:
-            model.sharpen_alpha = sharp
-            tmpcdes, z_grid = model.predict(val_dat, n_grid=301)
-            tmploss = cde_loss(tmpcdes, z_grid, val_sz)
-            loss_list.append(tmploss)
-        # Joining the loss_lists
-        if self.comm is not None:  # pragma: no cover
-            loss_list = self.comm.gather(loss_list)
-        if self.rank == 0:
+            bump_grid = np.linspace(self.config.bumpmin, self.config.bumpmax, self.config.nbump)
+            # Dividing work between the different mpi processes
+            bump_grid_partial = self.divide_array(bump_grid)
+            # All processes do the following procedure
+            loss_list = []
+            for bumpt in bump_grid_partial:
+                model.bump_threshold = bumpt
+                model.tune(val_dat, val_sz)
+                tmpcdes, z_grid = model.predict(val_dat, n_grid=self.config.nzbins)
+                tmploss = cde_loss(tmpcdes, z_grid, val_sz)
+                loss_list.append(tmploss)
+            # Joining the loss_lists
             if self.comm is not None:  # pragma: no cover
-                # Flatten list
-                loss_list = [item for sublist in loss_list for item in sublist]
-            bestloss = min(loss_list)
-            bestsharp = sharpen_grid[loss_list.index(bestloss)]
-            model.sharpen_alpha = bestsharp
-            # retrain with full dataset or not
-            if self.config.retrain_full:
-                print("Retraining with full training set...")
-                model.fit(color_data, speczs)
-            else:  # pragma: no cover
-                print(f"Skipping retraining, only fraction {self.config.trainfrac}"
-                      "of training data used when training model")
-            self.model = model
-            self.add_data('model', self.model)
+                loss_list = self.comm.gather(loss_list)
+            if self.rank == 0:
+                if self.comm is not None:  # pragma: no cover
+                    # Flatten list
+                    loss_list = [item for sublist in loss_list for item in sublist]
+                bestloss = min(loss_list)
+                bestbump = bump_grid[loss_list.index(bestloss)]
+                model.bump_threshold = bestbump
+
+                print("finding best sharpen parameter...")
+            sharpen_grid = np.linspace(self.config.sharpmin, self.config.sharpmax, self.config.nsharp)
+            # Dividing work between the different mpi processes
+            sharpen_grid_partial = self.divide_array(sharpen_grid)
+            # All processes do  the following procedure
+            loss_list = []
+            for sharp in sharpen_grid_partial:
+                model.sharpen_alpha = sharp
+                tmpcdes, z_grid = model.predict(val_dat, n_grid=301)
+                tmploss = cde_loss(tmpcdes, z_grid, val_sz)
+                loss_list.append(tmploss)
+            # Joining the loss_lists
+            if self.comm is not None:  # pragma: no cover
+                loss_list = self.comm.gather(loss_list)
+            if self.rank == 0:
+                if self.comm is not None:  # pragma: no cover
+                    # Flatten list
+                    loss_list = [item for sublist in loss_list for item in sublist]
+                bestloss = min(loss_list)
+                bestsharp = sharpen_grid[loss_list.index(bestloss)]
+                model.sharpen_alpha = bestsharp
+                # retrain with full dataset or not
+                if self.config.retrain_full:
+                    print("Retraining with full training set...")
+                    model.fit(color_data, speczs)
+                else:  # pragma: no cover
+                    print(f"Skipping retraining, only fraction {self.config.trainfrac}"
+                          "of training data used when training model")
+        self.model = model
+        self.add_data('model', self.model)
 
 
 class FlexZBoostEstimator(CatEstimator):
@@ -291,15 +305,15 @@ class FlexZBoostEstimator(CatEstimator):
             self.zgrid = np.array(z_grid).flatten()
 
             if 'mode' in calculated_point_estimates:
-                ancil_dictionary.update(mode = np.expand_dims(self.zgrid[np.argmax(pdfs, axis=1)], -1))
+                ancil_dictionary.update(mode=np.expand_dims(self.zgrid[np.argmax(pdfs, axis=1)], -1))
 
             qp_dstn = qp.Ensemble(qp.interp, data=dict(xvals=self.zgrid, yvals=pdfs))
 
             if 'mean' in calculated_point_estimates:
-                ancil_dictionary.update(mean = qp_dstn.mean())
+                ancil_dictionary.update(mean=qp_dstn.mean())
 
             if 'median' in calculated_point_estimates:
-                ancil_dictionary.update(median = qp_dstn.median())
+                ancil_dictionary.update(median=qp_dstn.median())
 
         elif self.config.qp_representation == 'flexzboost':
             basis_coefficients = self.model.predict_coefs(color_data)
@@ -312,13 +326,13 @@ class FlexZBoostEstimator(CatEstimator):
                 # array of linearly spaced values. We then flatten that nested array.
                 # so the final output will have the form `[0.0, 0.1, ..., 3.0]`.
                 self.zgrid = np.array(make_grid(self.config.nzbins, basis_coefficients.z_min, basis_coefficients.z_max)).flatten()
-                ancil_dictionary.update(mode = qp_dstn.mode(grid=self.zgrid))
+                ancil_dictionary.update(mode=qp_dstn.mode(grid=self.zgrid))
 
             if 'mean' in calculated_point_estimates:
-                ancil_dictionary.update(mean = qp_dstn.mean())
+                ancil_dictionary.update(mean=qp_dstn.mean())
 
             if 'median' in calculated_point_estimates:
-                ancil_dictionary.update(median = qp_dstn.median())
+                ancil_dictionary.update(median=qp_dstn.median())
 
         else:
             raise ValueError(f"Unknown qp_representation in config: {self.config.qp_representation}. Should be one of [interp|flexzboost]")
