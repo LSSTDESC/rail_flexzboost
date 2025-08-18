@@ -13,6 +13,7 @@ from ceci.config import StageParameter as Param
 from flexcode.helpers import make_grid
 from rail.estimation.estimator import CatEstimator, CatInformer
 from rail.core.common_params import SHARED_PARAMS
+import tables_io
 
 
 def make_color_data(data_dict, bands, err_bands, ref_band):
