@@ -141,3 +141,39 @@ def test_catch_bad_bands():
         flexzboost.FlexZBoostInformer.make_stage(hdf5_groupname='', **params)
     with pytest.raises(ValueError):
         flexzboost.FlexZBoostEstimator.make_stage(hdf5_groupname='', **params)
+
+
+def test_pq_input_format():
+    
+    parquetdata = "./tests/validation_10gal.pq"
+    train_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
+                         'trainfrac': 0.75, 'bumpmin': 0.02,
+                         'bumpmax': 0.35, 'nbump': 3,
+                         'sharpmin': 0.7, 'sharpmax': 2.1,
+                         'nsharp': 3, 'max_basis': 35,
+                         'basis_system': 'cosine',
+                         'regression_params': {'max_depth': 8,
+                                               'objective':
+                                               'reg:squarederror'},
+                         'hdf5_groupname': 'photometry',
+                         'model': 'model.tmp'}
+    estim_config_dict = {'hdf5_groupname': 'photometry',
+                         'model': 'model.tmp',
+                         'qp_representation': 'bogus'}
+    train_algo = flexzboost.FlexZBoostInformer
+    pz_algo = flexzboost.FlexZBoostEstimator
+
+    DS = RailStage.data_store
+    DS.__class__.allow_overwrite = True
+    DS.clear()
+    
+    training_data = DS.read_file('training_data', TableHandle, parquetdata)
+    validation_data = DS.read_file('validation_data', TableHandle, parquetdata)
+
+    train_pz = train_algo.make_stage(**train_config_dict)
+    train_pz.inform(training_data)
+
+    pz = pz_algo.make_stage(name="FZBoost", **estim_config_dict)
+    estim = pz.estimate(validation_data)
+
+    os.remove(pz.get_output(pz.get_aliased_tag('output'), final_name=True))
