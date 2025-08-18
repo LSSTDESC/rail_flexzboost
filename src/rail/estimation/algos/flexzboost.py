@@ -7,7 +7,6 @@ p(z) shape) via cde-loss over a grid.
 """
 
 import numpy as np
-import pandas as pd
 import qp
 import qp_flexzboost
 from ceci.config import StageParameter as Param
@@ -134,25 +133,20 @@ class FlexZBoostInformer(CatInformer):
                 training_data = self.get_data('input')
             speczs = np.array(training_data[self.config['redshift_col']])
 
+            # convert training data format to numpy dictionary
+            if tables_io.types.table_type(training_data) != 1:
+                training_data = self._convert_table_table_format(training_data, out_fmt_str="numpyDict")
+
             # replace nondetects
             for bandname, errname in zip(self.config.bands, self.config.err_bands):
                 if np.isnan(self.config.nondetect_val):  # pragma: no cover
                     detmask = np.isnan(training_data[bandname])
-                    if isinstance(training_data, pd.DataFrame):
-                        training_data.loc[detmask, bandname] = self.config.mag_limits[bandname]
-                        training_data.loc[detmask, errname] = 1.0
-                    else:
-                        detmask = np.isnan(training_data[bandname])
-                        training_data[bandname][detmask] = self.config.mag_limits[bandname]
-                        training_data[errname][detmask] = 1.0
+                    training_data[bandname][detmask] = self.config.mag_limits[bandname]
+                    training_data[errname][detmask] = 1.0
                 else:
                     detmask = np.isclose(training_data[bandname], self.config.nondetect_val, atol=0.01)
-                    if isinstance(training_data, pd.DataFrame):  # pragma: no cover
-                        training_data.loc[detmask, bandname] = self.config.mag_limits[bandname]
-                        training_data.loc[detmask, errname] = 1.0
-                    else:
-                        training_data[bandname][detmask] = self.config.mag_limits[bandname]
-                        training_data[errname][detmask] = 1.0
+                    training_data[bandname][detmask] = self.config.mag_limits[bandname]
+                    training_data[errname][detmask] = 1.0
 
             print("stacking some data...")
             color_data = make_color_data(training_data, self.config.bands, self.config.err_bands,
@@ -271,25 +265,20 @@ class FlexZBoostEstimator(CatEstimator):
     def _process_chunk(self, start, end, data, first):
         print(f"Process {self.rank} estimating PZ PDF for rows {start:,} - {end:,}")
 
+        # convert data format to numpy dictionary
+        if tables_io.types.table_type(data) != 1:
+            data = self._convert_table_table_format(data, "numpyDict")
+
         # replace nondetects
         for bandname, errname in zip(self.config.bands, self.config.err_bands):
             if np.isnan(self.config.nondetect_val):  # pragma: no cover
                 detmask = np.isnan(data[bandname])
-                if isinstance(data, pd.DataFrame):
-                    data.loc[detmask, bandname] = self.config.mag_limits[bandname]
-                    data.loc[detmask, errname] = 1.0
-                else:
-                    detmask = np.isnan(data[bandname])
-                    data[bandname][detmask] = self.config.mag_limits[bandname]
-                    data[errname][detmask] = 1.0
+                data[bandname][detmask] = self.config.mag_limits[bandname]
+                data[errname][detmask] = 1.0
             else:
                 detmask = np.isclose(data[bandname], self.config.nondetect_val, atol=0.01)
-                if isinstance(data, pd.DataFrame):  # pragma: no cover
-                    data.loc[detmask, bandname] = self.config.mag_limits[bandname]
-                    data.loc[detmask, errname] = 1.0
-                else:
-                    data[bandname][detmask] = self.config.mag_limits[bandname]
-                    data[errname][detmask] = 1.0
+                data[bandname][detmask] = self.config.mag_limits[bandname]
+                data[errname][detmask] = 1.0
 
         color_data = make_color_data(data, self.config.bands, self.config.err_bands,
                                      self.config.ref_band)
