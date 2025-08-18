@@ -1,8 +1,10 @@
 import numpy as np
+import os
 import pytest
 from rail.core.stage import RailStage
 from rail.utils.testing_utils import one_algo
 from rail.utils.path_utils import RAILDIR
+from rail.core.data import TableHandle
 from rail.estimation.algos import flexzboost
 import scipy.special
 sci_ver_str = scipy.__version__.split('.')
@@ -155,11 +157,11 @@ def test_pq_input_format():
                          'regression_params': {'max_depth': 8,
                                                'objective':
                                                'reg:squarederror'},
-                         'hdf5_groupname': 'photometry',
+                         'hdf5_groupname': '',
                          'model': 'model.tmp'}
     estim_config_dict = {'hdf5_groupname': 'photometry',
                          'model': 'model.tmp',
-                         'qp_representation': 'bogus'}
+                         'qp_representation': 'interp'}
     train_algo = flexzboost.FlexZBoostInformer
     pz_algo = flexzboost.FlexZBoostEstimator
 

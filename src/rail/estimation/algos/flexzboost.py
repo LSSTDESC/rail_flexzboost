@@ -136,7 +136,7 @@ class FlexZBoostInformer(CatInformer):
 
             # convert training data format to numpy dictionary
             if tables_io.types.table_type(training_data) != 1:
-                training_data = self._convert_table_table_format(training_data, out_fmt_str="numpyDict")
+                training_data = self._convert_table_format(training_data, out_fmt_str="numpyDict")
 
             # replace nondetects
             for bandname, errname in zip(self.config.bands, self.config.err_bands):
@@ -268,7 +268,7 @@ class FlexZBoostEstimator(CatEstimator):
 
         # convert data format to numpy dictionary
         if tables_io.types.table_type(data) != 1:
-            data = self._convert_table_table_format(data, "numpyDict")
+            data = self._convert_table_format(data, "numpyDict")
 
         # replace nondetects
         for bandname, errname in zip(self.config.bands, self.config.err_bands):
