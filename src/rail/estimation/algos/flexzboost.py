@@ -47,6 +47,7 @@ class FlexZBoostInformer(CatInformer):
 
     name = "FlexZBoostInformer"
     entrypoint_function = "inform"  # the user-facing science function for this class
+    interactive_function = "flex_z_boost_informer"
     config_options = CatInformer.config_options.copy()
     config_options.update(zmin=SHARED_PARAMS,
                           zmax=SHARED_PARAMS,
@@ -265,6 +266,7 @@ class FlexZBoostEstimator(CatEstimator):
     """FlexZBoost-based CatEstimator"""
 
     name = "FlexZBoostEstimator"
+    interactive_function = "flex_z_boost_estimator"
     entrypoint_function = "estimate"  # the user-facing science function for this class
     config_options = CatEstimator.config_options.copy()
     config_options.update(nzbins=SHARED_PARAMS,
