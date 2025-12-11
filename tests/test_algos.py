@@ -236,12 +236,14 @@ def test_pq_input_format():
     train_algo = flexzboost.FlexZBoostInformer
     pz_algo = flexzboost.FlexZBoostEstimator
 
-    DS = RailStage.data_store
-    DS.__class__.allow_overwrite = True
-    DS.clear()
+    # DS = RailStage.data_store
+    # DS.__class__.allow_overwrite = True
+    # DS.clear()
 
-    training_data = DS.read_file("training_data", TableHandle, parquetdata)
-    validation_data = DS.read_file("validation_data", TableHandle, parquetdata)
+    # training_data = DS.read_file("training_data", TableHandle, parquetdata)
+    # validation_data = DS.read_file("validation_data", TableHandle, parquetdata)
+    training_data = TableHandle("training_data", path=parquetdata)
+    validation_data = TableHandle("validation_data", path=parquetdata)
 
     train_pz = train_algo.make_stage(**train_config_dict)
     train_pz.inform(training_data)
