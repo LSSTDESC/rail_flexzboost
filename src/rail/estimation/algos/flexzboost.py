@@ -57,8 +57,8 @@ class FlexZBoostInformer(CatInformer):
                           redshift_col=SHARED_PARAMS,
                           retrain_full=Param(bool, True, msg="if True, re-run the fit with the full training set, "
                                              "including data set aside for bump/sharpen validation.  If False, only"
-                                             " use the subset defined via trainfrac fraction"),
-                          trainfrac=Param(float, 0.75,
+                                             " use the subset defined via train_frac fraction"),
+                          train_frac=Param(float, 0.75,
                                           msg="fraction of training "
                                           "data to use for training (rest used for bump thresh "
                                           "and sharpening determination)"),
@@ -73,7 +73,7 @@ class FlexZBoostInformer(CatInformer):
                           nbump=Param(int, 20, msg="number of grid points in bumpthresh grid search"),
                           sharpmin=Param(float, 0.7, msg="min value in grid checked in optimal sharpening parameter fit"),
                           sharpmax=Param(float, 2.1, msg="max value in grid checked in optimal sharpening parameter fit"),
-                          nsharp=Param(int, 15, msg="number of search points in sharpening fit"),
+                          n_sharp=Param(int, 15, msg="number of search points in sharpening fit"),
                           max_basis=Param(int, 35, msg="maximum number of basis funcitons to use in density estimate"),
                           basis_system=Param(str, 'cosine', msg="type of basis sytem to use with flexcode"),
                           regression_params=Param(dict, {'max_depth': 8, 'objective': 'reg:squarederror'},
@@ -89,14 +89,14 @@ class FlexZBoostInformer(CatInformer):
             raise ValueError("ref_band not present in bands list! ")
 
     @staticmethod
-    def split_data(fz_data, sz_data, trainfrac, seed):
+    def split_data(fz_data, sz_data, train_frac, seed):
         """
         make a random partition of the training data into training and
         validation, validation data will be used to determine bump
         thresh and sharpen parameters.
         """
         nobs = fz_data.shape[0]
-        ntrain = round(nobs * trainfrac)
+        ntrain = round(nobs * train_frac)
         # set a specific seed for reproducibility
         rng = np.random.default_rng(seed=seed)
         perm = rng.permutation(nobs)
@@ -158,19 +158,19 @@ class FlexZBoostInformer(CatInformer):
                                            z_min=self.config.zmin, z_max=self.config.zmax,
                                            regression_params=self.config.regression_params)
 
-            if np.isclose(self.config.trainfrac, 1.0):
-                if self.config.nbump == 1 and self.config.nsharp == 1:
+            if np.isclose(self.config.train_frac, 1.0):
+                if self.config.nbump == 1 and self.config.n_sharp == 1:
                     self.do_grid_search = False
                     print("skipping grid search, setting bump_thresh to bumpmin and sharpen to sharpmin")
                     model.bump_threshold = self.config.bumpmin
                     model.sharpen_alpha = self.config.sharpmin
                     model.fit(color_data, speczs)
                 else:  # pragma: no cover
-                    raise ValueError("trainfrac cannot be 1.0 when a grid search of bump and sharpen are performed, this leads to empty validation arrays!")
+                    raise ValueError("train_frac cannot be 1.0 when a grid search of bump and sharpen are performed, this leads to empty validation arrays!")
             else:
                 train_dat, val_dat, train_sz, val_sz = self.split_data(color_data,
                                                                        speczs,
-                                                                       self.config.trainfrac,
+                                                                       self.config.train_frac,
                                                                        self.config.seed)
                 print("read in training data")
                 print("fit the model...")
@@ -210,7 +210,7 @@ class FlexZBoostInformer(CatInformer):
                 model.bump_threshold = bestbump
 
                 print("finding best sharpen parameter...")
-            sharpen_grid = np.linspace(self.config.sharpmin, self.config.sharpmax, self.config.nsharp)
+            sharpen_grid = np.linspace(self.config.sharpmin, self.config.sharpmax, self.config.n_sharp)
             # Dividing work between the different mpi processes
             sharpen_grid_partial = self.divide_array(sharpen_grid)
             # All processes do  the following procedure
@@ -235,7 +235,7 @@ class FlexZBoostInformer(CatInformer):
                     print("Retraining with full training set...")
                     model.fit(color_data, speczs)
                 else:  # pragma: no cover
-                    print(f"Skipping retraining, only fraction {self.config.trainfrac}"
+                    print(f"Skipping retraining, only fraction {self.config.train_frac}"
                           "of training data used when training model")
         self.model = model
         self.add_data('model', self.model)

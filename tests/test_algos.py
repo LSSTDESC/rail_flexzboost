@@ -12,10 +12,10 @@ sci_ver_str = scipy.__version__.split('.')
 
 def test_flexzboost():
     train_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
-                         'trainfrac': 0.75, 'bumpmin': 0.02,
+                         'train_frac': 0.75, 'bumpmin': 0.02,
                          'bumpmax': 0.35, 'nbump': 3,
                          'sharpmin': 0.7, 'sharpmax': 2.1,
-                         'nsharp': 3, 'max_basis': 35,
+                         'n_sharp': 3, 'max_basis': 35,
                          'basis_system': 'cosine',
                          'regression_params': {'max_depth': 8,
                                                'objective':
@@ -36,10 +36,10 @@ def test_flexzboost():
 
 def test_flexzboost_with_interp():
     train_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
-                         'trainfrac': 0.75, 'bumpmin': 0.02,
+                         'train_frac': 0.75, 'bumpmin': 0.02,
                          'bumpmax': 0.35, 'nbump': 3,
                          'sharpmin': 0.7, 'sharpmax': 2.1,
-                         'nsharp': 3, 'max_basis': 35,
+                         'n_sharp': 3, 'max_basis': 35,
                          'basis_system': 'cosine',
                          'regression_params': {'max_depth': 8,
                                                'objective':
@@ -62,10 +62,10 @@ def test_flexzboost_with_interp():
 
 def test_flexzboost_skip_grid():
     train_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
-                         'trainfrac': 1.0, 'bumpmin': 0.15,
+                         'train_frac': 1.0, 'bumpmin': 0.15,
                          'bumpmax': 0.15, 'nbump': 1,
                          'sharpmin': 1.4, 'sharpmax': 1.4,
-                         'nsharp': 1, 'max_basis': 35,
+                         'n_sharp': 1, 'max_basis': 35,
                          'basis_system': 'cosine',
                          'regression_params': {'max_depth': 8,
                                                'objective':
@@ -89,10 +89,10 @@ def test_flexzboost_skip_grid():
 @pytest.mark.slow
 def test_flexzboost_with_qp_flexzboost():
     train_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
-                         'trainfrac': 0.75, 'bumpmin': 0.02,
+                         'train_frac': 0.75, 'bumpmin': 0.02,
                          'bumpmax': 0.35, 'nbump': 3,
                          'sharpmin': 0.7, 'sharpmax': 2.1,
-                         'nsharp': 3, 'max_basis': 35,
+                         'n_sharp': 3, 'max_basis': 35,
                          'basis_system': 'cosine',
                          'regression_params': {'max_depth': 8,
                                                'objective':
@@ -117,10 +117,10 @@ def test_flexzboost_with_qp_flexzboost():
 def test_flexzboost_with_unknown_qp_representation():
     """Pass a bogus qp_representation string to the config, expect a ValueError"""
     train_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
-                         'trainfrac': 0.75, 'bumpmin': 0.02,
+                         'train_frac': 0.75, 'bumpmin': 0.02,
                          'bumpmax': 0.35, 'nbump': 3,
                          'sharpmin': 0.7, 'sharpmax': 2.1,
-                         'nsharp': 3, 'max_basis': 35,
+                         'n_sharp': 3, 'max_basis': 35,
                          'basis_system': 'cosine',
                          'regression_params': {'max_depth': 8,
                                                'objective':
@@ -149,10 +149,10 @@ def test_pq_input_format():
     
     parquetdata = "./tests/validation_10gal.pq"
     train_config_dict = {'zmin': 0.0, 'zmax': 3.0, 'nzbins': 301,
-                         'trainfrac': 0.75, 'bumpmin': 0.02,
+                         'train_frac': 0.75, 'bumpmin': 0.02,
                          'bumpmax': 0.35, 'nbump': 3,
                          'sharpmin': 0.7, 'sharpmax': 2.1,
-                         'nsharp': 3, 'max_basis': 35,
+                         'n_sharp': 3, 'max_basis': 35,
                          'basis_system': 'cosine',
                          'regression_params': {'max_depth': 8,
                                                'objective':
