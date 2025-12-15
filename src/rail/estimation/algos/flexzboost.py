@@ -16,7 +16,7 @@ from rail.core.common_params import SHARED_PARAMS
 import tables_io
 
 
-def make_color_data(data_dict, bands, err_bands, ref_band):
+def make_color_data(data_dict, bands, err_bands, ref_band, include_magerr = False):
     """
     make a dataset consisting of the i-band mag and the five colors.
 
@@ -36,8 +36,9 @@ def make_color_data(data_dict, bands, err_bands, ref_band):
     for i in range(nbands):
         color = data_dict[bands[i]] - data_dict[bands[i + 1]]
         input_data = np.vstack((input_data, color))
-        colorerr = np.sqrt(data_dict[err_bands[i]]**2 + data_dict[err_bands[i + 1]]**2)
-        input_data = np.vstack((input_data, colorerr))
+        if include_magerr: # pragma: no cover
+            colorerr = np.sqrt(data_dict[err_bands[i]]**2 + data_dict[err_bands[i + 1]]**2)
+            input_data = np.vstack((input_data, colorerr))
     return input_data.T
 
 
@@ -79,7 +80,9 @@ class FlexZBoostInformer(CatInformer):
                           regression_params=Param(dict, {'max_depth': 8, 'objective': 'reg:squarederror'},
                                                   msg="dictionary of options passed to flexcode, includes "
                                                   "max_depth (int), and objective, which should be set "
-                                                  " to reg:squarederror"))
+                                                  " to reg:squarederror"),
+                          include_magerr=Param(bool, False, msg="Include magnitude error in the training and estimation"
+                                                   "process"))
 
     def __init__(self, args, **kwargs):
         """ Constructor
@@ -151,7 +154,7 @@ class FlexZBoostInformer(CatInformer):
 
             print("stacking some data...")
             color_data = make_color_data(training_data, self.config.bands, self.config.err_bands,
-                                         self.config.ref_band)
+                                         self.config.ref_band, include_magerr = self.config.include_magerr)
 
             model = flexcode.FlexCodeModel(XGBoost, max_basis=self.config.max_basis,
                                            basis_system=self.config.basis_system,
@@ -237,6 +240,7 @@ class FlexZBoostInformer(CatInformer):
                 else:  # pragma: no cover
                     print(f"Skipping retraining, only fraction {self.config.trainfrac}"
                           "of training data used when training model")
+            print(f"Best bump = {bestbump}, best sharpen = {bestsharp}")
         self.model = model
         self.add_data('model', self.model)
 
@@ -252,7 +256,9 @@ class FlexZBoostEstimator(CatEstimator):
                           bands=SHARED_PARAMS,
                           err_bands=SHARED_PARAMS,
                           ref_band=SHARED_PARAMS,
-                          qp_representation=Param(str, "interp", msg="qp generator to use. [interp|flexzboost]")
+                          qp_representation=Param(str, "interp", msg="qp generator to use. [interp|flexzboost]"),
+                          include_magerr=Param(bool, False, msg="Include magnitude error in the training and estimation"
+                                                   "process")
                           )
 
     def __init__(self, args, **kwargs):
@@ -282,7 +288,7 @@ class FlexZBoostEstimator(CatEstimator):
                 data[errname][detmask] = 1.0
 
         color_data = make_color_data(data, self.config.bands, self.config.err_bands,
-                                     self.config.ref_band)
+                                     self.config.ref_band, include_magerr=self.config.include_magerr)
 
         ancil_dictionary = dict()
 
