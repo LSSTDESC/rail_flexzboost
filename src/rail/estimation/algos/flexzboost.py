@@ -9,11 +9,11 @@ p(z) shape) via cde-loss over a grid.
 import numpy as np
 import qp
 import qp_flexzboost
+import tables_io
 from ceci.config import StageParameter as Param
 from flexcode.helpers import make_grid
-from rail.estimation.estimator import CatEstimator, CatInformer
 from rail.core.common_params import SHARED_PARAMS
-import tables_io
+from rail.estimation.estimator import CatEstimator, CatInformer
 
 
 def make_color_data(data_dict, bands, err_bands, ref_band, include_mag_err=False):
@@ -37,56 +37,90 @@ def make_color_data(data_dict, bands, err_bands, ref_band, include_mag_err=False
         color = data_dict[bands[i]] - data_dict[bands[i + 1]]
         input_data = np.vstack((input_data, color))
         if include_mag_err:  # pragma: no cover
-            colorerr = np.sqrt(data_dict[err_bands[i]]**2 + data_dict[err_bands[i + 1]]**2)
+            colorerr = np.sqrt(
+                data_dict[err_bands[i]] ** 2 + data_dict[err_bands[i + 1]] ** 2
+            )
             input_data = np.vstack((input_data, colorerr))
     return input_data.T
 
 
 class FlexZBoostInformer(CatInformer):
-    """ Train a FlexZBoost CatInformer
-    """
-    name = 'FlexZBoostInformer'
+    """Train a FlexZBoost CatInformer"""
+
+    name = "FlexZBoostInformer"
+    entrypoint_function = "inform"  # the user-facing science function for this class
+    interactive_function = "flex_z_boost_informer"
     config_options = CatInformer.config_options.copy()
-    config_options.update(zmin=SHARED_PARAMS,
-                          zmax=SHARED_PARAMS,
-                          nzbins=SHARED_PARAMS,
-                          nondetect_val=SHARED_PARAMS,
-                          mag_limits=SHARED_PARAMS,
-                          bands=SHARED_PARAMS,
-                          err_bands=SHARED_PARAMS,
-                          ref_band=SHARED_PARAMS,
-                          redshift_col=SHARED_PARAMS,
-                          retrain_full=Param(bool, True, msg="if True, re-run the fit with the full training set, "
-                                             "including data set aside for bump/sharpen validation.  If False, only"
-                                             " use the subset defined via trainfrac fraction"),
-                          trainfrac=Param(float, 0.75,
-                                          msg="fraction of training "
-                                          "data to use for training (rest used for bump thresh "
-                                          "and sharpening determination)"),
-                          seed=Param(int, 1138, msg="Random number seed"),
-                          bumpmin=Param(float, 0.02,
-                                        msg="minimum value in grid of "
-                                        "thresholds checked to optimize removal of spurious "
-                                        "small bumps"),
-                          bumpmax=Param(float, 0.35,
-                                        msg="max value in grid checked "
-                                            "for removal of small bumps"),
-                          nbump=Param(int, 20, msg="number of grid points in bumpthresh grid search"),
-                          sharpmin=Param(float, 0.7, msg="min value in grid checked in optimal sharpening parameter fit"),
-                          sharpmax=Param(float, 2.1, msg="max value in grid checked in optimal sharpening parameter fit"),
-                          nsharp=Param(int, 15, msg="number of search points in sharpening fit"),
-                          max_basis=Param(int, 35, msg="maximum number of basis funcitons to use in density estimate"),
-                          basis_system=Param(str, 'cosine', msg="type of basis sytem to use with flexcode"),
-                          regression_params=Param(dict, {'max_depth': 8, 'objective': 'reg:squarederror'},
-                                                  msg="dictionary of options passed to flexcode, includes "
-                                                  "max_depth (int), and objective, which should be set "
-                                                  " to reg:squarederror"),
-                          include_mag_err=Param(bool, False, msg="Include magnitude error in the training and estimation"
-                                                "process"))
+    config_options.update(
+        zmin=SHARED_PARAMS,
+        zmax=SHARED_PARAMS,
+        nzbins=SHARED_PARAMS,
+        nondetect_val=SHARED_PARAMS,
+        mag_limits=SHARED_PARAMS,
+        bands=SHARED_PARAMS,
+        err_bands=SHARED_PARAMS,
+        ref_band=SHARED_PARAMS,
+        redshift_col=SHARED_PARAMS,
+        retrain_full=Param(
+            bool,
+            True,
+            msg="if True, re-run the fit with the full training set, "
+            "including data set aside for bump/sharpen validation.  If False, only"
+            " use the subset defined via trainfrac fraction",
+        ),
+        trainfrac=Param(
+            float,
+            0.75,
+            msg="fraction of training "
+            "data to use for training (rest used for bump thresh "
+            "and sharpening determination)",
+        ),
+        seed=Param(int, 1138, msg="Random number seed"),
+        bumpmin=Param(
+            float,
+            0.02,
+            msg="minimum value in grid of "
+            "thresholds checked to optimize removal of spurious "
+            "small bumps",
+        ),
+        bumpmax=Param(
+            float, 0.35, msg="max value in grid checked " "for removal of small bumps"
+        ),
+        nbump=Param(int, 20, msg="number of grid points in bumpthresh grid search"),
+        sharpmin=Param(
+            float,
+            0.7,
+            msg="min value in grid checked in optimal sharpening parameter fit",
+        ),
+        sharpmax=Param(
+            float,
+            2.1,
+            msg="max value in grid checked in optimal sharpening parameter fit",
+        ),
+        nsharp=Param(int, 15, msg="number of search points in sharpening fit"),
+        max_basis=Param(
+            int, 35, msg="maximum number of basis funcitons to use in density estimate"
+        ),
+        basis_system=Param(
+            str, "cosine", msg="type of basis sytem to use with flexcode"
+        ),
+        regression_params=Param(
+            dict,
+            {"max_depth": 8, "objective": "reg:squarederror"},
+            msg="dictionary of options passed to flexcode, includes "
+            "max_depth (int), and objective, which should be set "
+            " to reg:squarederror",
+        ),
+        include_mag_err=Param(
+            bool,
+            False,
+            msg="Include magnitude error in the training and estimation" "process",
+        ),
+    )
 
     def __init__(self, args, **kwargs):
-        """ Constructor
-        Do CatInformer specific initialization, then check on bands """
+        """Constructor
+        Do CatInformer specific initialization, then check on bands"""
         super().__init__(args, **kwargs)
         if self.config.ref_band not in self.config.bands:
             raise ValueError("ref_band not present in bands list! ")
@@ -122,24 +156,26 @@ class FlexZBoostInformer(CatInformer):
             return grid_partial
 
     def run(self):
-        """Train flexzboost model model
-        """
+        """Train flexzboost model model"""
         import flexcode
-        from flexcode.regression_models import XGBoost
         from flexcode.loss_functions import cde_loss
+        from flexcode.regression_models import XGBoost
+
         self.cde_loss = cde_loss
         self.do_grid_search = True
 
         if self.rank == 0:
             if self.config.hdf5_groupname:
-                training_data = self.get_data('input')[self.config.hdf5_groupname]
+                training_data = self.get_data("input")[self.config.hdf5_groupname]
             else:  # pragma: no cover
-                training_data = self.get_data('input')
-            speczs = np.array(training_data[self.config['redshift_col']])
+                training_data = self.get_data("input")
+            speczs = np.array(training_data[self.config["redshift_col"]])
 
             # convert training data format to numpy dictionary
             if tables_io.types.table_type(training_data) != 1:
-                training_data = self._convert_table_format(training_data, out_fmt_str="numpyDict")
+                training_data = self._convert_table_format(
+                    training_data, out_fmt_str="numpyDict"
+                )
 
             # replace nondetects
             for bandname, errname in zip(self.config.bands, self.config.err_bands):
@@ -148,33 +184,47 @@ class FlexZBoostInformer(CatInformer):
                     training_data[bandname][detmask] = self.config.mag_limits[bandname]
                     training_data[errname][detmask] = 1.0
                 else:
-                    detmask = np.isclose(training_data[bandname], self.config.nondetect_val, atol=0.01)
+                    detmask = np.isclose(
+                        training_data[bandname], self.config.nondetect_val, atol=0.01
+                    )
                     training_data[bandname][detmask] = self.config.mag_limits[bandname]
                     training_data[errname][detmask] = 1.0
 
             print("stacking some data...")
-            color_data = make_color_data(training_data, self.config.bands, self.config.err_bands,
-                                         self.config.ref_band, include_mag_err=self.config.include_mag_err)
+            color_data = make_color_data(
+                training_data,
+                self.config.bands,
+                self.config.err_bands,
+                self.config.ref_band,
+                include_mag_err=self.config.include_mag_err,
+            )
 
-            model = flexcode.FlexCodeModel(XGBoost, max_basis=self.config.max_basis,
-                                           basis_system=self.config.basis_system,
-                                           z_min=self.config.zmin, z_max=self.config.zmax,
-                                           regression_params=self.config.regression_params)
+            model = flexcode.FlexCodeModel(
+                XGBoost,
+                max_basis=self.config.max_basis,
+                basis_system=self.config.basis_system,
+                z_min=self.config.zmin,
+                z_max=self.config.zmax,
+                regression_params=self.config.regression_params,
+            )
 
             if np.isclose(self.config.trainfrac, 1.0):
                 if self.config.nbump == 1 and self.config.nsharp == 1:
                     self.do_grid_search = False
-                    print("skipping grid search, setting bump_thresh to bumpmin and sharpen to sharpmin")
+                    print(
+                        "skipping grid search, setting bump_thresh to bumpmin and sharpen to sharpmin"
+                    )
                     model.bump_threshold = self.config.bumpmin
                     model.sharpen_alpha = self.config.sharpmin
                     model.fit(color_data, speczs)
                 else:  # pragma: no cover
-                    raise ValueError("trainfrac cannot be 1.0 when a grid search of bump and sharpen are performed, this leads to empty validation arrays!")
+                    raise ValueError(
+                        "trainfrac cannot be 1.0 when a grid search of bump and sharpen are performed, this leads to empty validation arrays!"
+                    )
             else:
-                train_dat, val_dat, train_sz, val_sz = self.split_data(color_data,
-                                                                       speczs,
-                                                                       self.config.trainfrac,
-                                                                       self.config.seed)
+                train_dat, val_dat, train_sz, val_sz = self.split_data(
+                    color_data, speczs, self.config.trainfrac, self.config.seed
+                )
                 print("read in training data")
                 print("fit the model...")
                 model.fit(train_dat, train_sz)
@@ -190,7 +240,9 @@ class FlexZBoostInformer(CatInformer):
                 val_dat = self.comm.bcast(val_dat)
                 val_sz = self.comm.bcast(val_sz)
 
-            bump_grid = np.linspace(self.config.bumpmin, self.config.bumpmax, self.config.nbump)
+            bump_grid = np.linspace(
+                self.config.bumpmin, self.config.bumpmax, self.config.nbump
+            )
             # Dividing work between the different mpi processes
             bump_grid_partial = self.divide_array(bump_grid)
             # All processes do the following procedure
@@ -213,7 +265,9 @@ class FlexZBoostInformer(CatInformer):
                 model.bump_threshold = bestbump
 
                 print("finding best sharpen parameter...")
-            sharpen_grid = np.linspace(self.config.sharpmin, self.config.sharpmax, self.config.nsharp)
+            sharpen_grid = np.linspace(
+                self.config.sharpmin, self.config.sharpmax, self.config.nsharp
+            )
             # Dividing work between the different mpi processes
             sharpen_grid_partial = self.divide_array(sharpen_grid)
             # All processes do  the following procedure
@@ -238,32 +292,42 @@ class FlexZBoostInformer(CatInformer):
                     print("Retraining with full training set...")
                     model.fit(color_data, speczs)
                 else:  # pragma: no cover
-                    print(f"Skipping retraining, only fraction {self.config.trainfrac}"
-                          "of training data used when training model")
+                    print(
+                        f"Skipping retraining, only fraction {self.config.trainfrac}"
+                        "of training data used when training model"
+                    )
             print(f"Best bump = {bestbump}, best sharpen = {bestsharp}")
         self.model = model
-        self.add_data('model', self.model)
+        self.add_data("model", self.model)
 
 
 class FlexZBoostEstimator(CatEstimator):
-    """FlexZBoost-based CatEstimator
-    """
-    name = 'FlexZBoostEstimator'
+    """FlexZBoost-based CatEstimator"""
+
+    name = "FlexZBoostEstimator"
+    interactive_function = "flex_z_boost_estimator"
+    entrypoint_function = "estimate"  # the user-facing science function for this class
     config_options = CatEstimator.config_options.copy()
-    config_options.update(nzbins=SHARED_PARAMS,
-                          nondetect_val=SHARED_PARAMS,
-                          mag_limits=SHARED_PARAMS,
-                          bands=SHARED_PARAMS,
-                          err_bands=SHARED_PARAMS,
-                          ref_band=SHARED_PARAMS,
-                          qp_representation=Param(str, "interp", msg="qp generator to use. [interp|flexzboost]"),
-                          include_mag_err=Param(bool, False, msg="Include magnitude error in the training and estimation"
-                                                "process")
-                          )
+    config_options.update(
+        nzbins=SHARED_PARAMS,
+        nondetect_val=SHARED_PARAMS,
+        mag_limits=SHARED_PARAMS,
+        bands=SHARED_PARAMS,
+        err_bands=SHARED_PARAMS,
+        ref_band=SHARED_PARAMS,
+        qp_representation=Param(
+            str, "interp", msg="qp generator to use. [interp|flexzboost]"
+        ),
+        include_mag_err=Param(
+            bool,
+            False,
+            msg="Include magnitude error in the training and estimation" "process",
+        ),
+    )
 
     def __init__(self, args, **kwargs):
-        """ Constructor:
-        Do CatEstimator specific initialization """
+        """Constructor:
+        Do CatEstimator specific initialization"""
         super().__init__(args, **kwargs)
         if self.config.ref_band not in self.config.bands:
             raise ValueError("ref_band not present in bands list! ")
@@ -283,55 +347,77 @@ class FlexZBoostEstimator(CatEstimator):
                 data[bandname][detmask] = self.config.mag_limits[bandname]
                 data[errname][detmask] = 1.0
             else:
-                detmask = np.isclose(data[bandname], self.config.nondetect_val, atol=0.01)
+                detmask = np.isclose(
+                    data[bandname], self.config.nondetect_val, atol=0.01
+                )
                 data[bandname][detmask] = self.config.mag_limits[bandname]
                 data[errname][detmask] = 1.0
 
-        color_data = make_color_data(data, self.config.bands, self.config.err_bands,
-                                     self.config.ref_band, include_mag_err=self.config.include_mag_err)
+        color_data = make_color_data(
+            data,
+            self.config.bands,
+            self.config.err_bands,
+            self.config.ref_band,
+            include_mag_err=self.config.include_mag_err,
+        )
 
         ancil_dictionary = dict()
 
         calculated_point_estimates = []
-        if 'calculated_point_estimates' in self.config:
+        if "calculated_point_estimates" in self.config:
             calculated_point_estimates = self.config.calculated_point_estimates
 
-        if self.config.qp_representation == 'interp':
+        if self.config.qp_representation == "interp":
             pdfs, z_grid = self.model.predict(color_data, n_grid=self.config.nzbins)
             self.zgrid = np.array(z_grid).flatten()
 
-            if 'mode' in calculated_point_estimates:
-                ancil_dictionary.update(mode=np.expand_dims(self.zgrid[np.argmax(pdfs, axis=1)], -1))
+            if "mode" in calculated_point_estimates:
+                ancil_dictionary.update(
+                    mode=np.expand_dims(self.zgrid[np.argmax(pdfs, axis=1)], -1)
+                )
 
             qp_dstn = qp.Ensemble(qp.interp, data=dict(xvals=self.zgrid, yvals=pdfs))
 
-            if 'mean' in calculated_point_estimates:
+            if "mean" in calculated_point_estimates:
                 ancil_dictionary.update(mean=qp_dstn.mean())
 
-            if 'median' in calculated_point_estimates:
+            if "median" in calculated_point_estimates:
                 ancil_dictionary.update(median=qp_dstn.median())
 
-        elif self.config.qp_representation == 'flexzboost':
+        elif self.config.qp_representation == "flexzboost":
             basis_coefficients = self.model.predict_coefs(color_data)
-            qp_dstn = qp.Ensemble(qp_flexzboost.FlexzboostGen,
-                                  data=dict(weights=basis_coefficients.coefs,
-                                            basis_coefficients_object=basis_coefficients), method='basis_coef_object')
+            qp_dstn = qp.Ensemble(
+                qp_flexzboost.FlexzboostGen,
+                data=dict(
+                    weights=basis_coefficients.coefs,
+                    basis_coefficients_object=basis_coefficients,
+                ),
+                method="basis_coef_object",
+            )
 
-            if 'mode' in calculated_point_estimates:
+            if "mode" in calculated_point_estimates:
                 # `make_grid` is a helper function from Flexcode that will create a nested
                 # array of linearly spaced values. We then flatten that nested array.
                 # so the final output will have the form `[0.0, 0.1, ..., 3.0]`.
-                self.zgrid = np.array(make_grid(self.config.nzbins, basis_coefficients.z_min, basis_coefficients.z_max)).flatten()
+                self.zgrid = np.array(
+                    make_grid(
+                        self.config.nzbins,
+                        basis_coefficients.z_min,
+                        basis_coefficients.z_max,
+                    )
+                ).flatten()
                 ancil_dictionary.update(mode=qp_dstn.mode(grid=self.zgrid))
 
-            if 'mean' in calculated_point_estimates:
+            if "mean" in calculated_point_estimates:
                 ancil_dictionary.update(mean=qp_dstn.mean())
 
-            if 'median' in calculated_point_estimates:
+            if "median" in calculated_point_estimates:
                 ancil_dictionary.update(median=qp_dstn.median())
 
         else:
-            raise ValueError(f"Unknown qp_representation in config: {self.config.qp_representation}. Should be one of [interp|flexzboost]")
+            raise ValueError(
+                f"Unknown qp_representation in config: {self.config.qp_representation}. Should be one of [interp|flexzboost]"
+            )
 
         if calculated_point_estimates:
             qp_dstn.set_ancil(ancil_dictionary)

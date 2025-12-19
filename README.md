@@ -67,4 +67,3 @@ If you use this package, you should also cite the appropriate papers for each
 code used.  A list of such codes is included in the 
 [Citing RAIL](https://lsstdescrail.readthedocs.io/en/stable/source/citing.html)
 section of the main RAIL Read The Docs page.
-
