@@ -186,7 +186,7 @@ class FlexZBoostInformer(CatInformer):
                 training_data = self.get_data("input")
             speczs = np.array(training_data[self.config["redshift_col"]])
             if self.config.use_weights:
-                if self.config.weights_column not in training_data.keys():
+                if self.config.weights_column not in training_data.keys():  # pragma: no cover
                     raise KeyError(f"column {self.config.weights_column} not in training_file")
                 train_weights = np.array(training_data[self.config.weights_column])
             else:
@@ -244,7 +244,8 @@ class FlexZBoostInformer(CatInformer):
                     )
             else:
                 train_dat, val_dat, train_sz, val_sz, train_w = self.split_data(
-                    color_data, speczs, self.config.trainfrac, self.config.seed
+                    color_data, speczs, self.config.trainfrac, self.config.seed,
+                    train_weights
                 )
                 print("read in training data")
                 print("fit the model...")
