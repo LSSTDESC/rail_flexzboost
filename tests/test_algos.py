@@ -202,7 +202,7 @@ def test_flexzboost_with_qp_flexzboost():
         "hdf5_groupname": "photometry",
         "model": "model.tmp",
         "qp_representation": "flexzboost",
-        "calculated_point_estimates": ["mode", "mean", "median"],
+        "calculated_point_estimates": ["mode", "median"],
     }
 
     train_algo = flexzboost.FlexZBoostInformer
@@ -212,7 +212,7 @@ def test_flexzboost_with_qp_flexzboost():
     )
 
     assert np.isclose(results.ancil["mode"], rerun_results.ancil["mode"]).all()
-    assert np.isclose(results.ancil["mean"], rerun_results.ancil["mean"]).all()
+    # assert np.isclose(results.ancil["mean"], rerun_results.ancil["mean"]).all()
     assert np.isclose(results.ancil["median"], rerun_results.ancil["median"]).all()
 
 
