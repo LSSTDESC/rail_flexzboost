@@ -116,6 +116,17 @@ class FlexZBoostInformer(CatInformer):
             False,
             msg="Include magnitude error in the training and estimation" "process",
         ),
+        use_weights=Param(
+            bool,
+            False,
+            msg="if True, will expect a column with name given by `weights_column` "
+            "config param in the input file to supply to the model fit"
+        ),
+        weights_column=Param(
+            str,
+            "None",
+            msg="name of weights column to be used if `use_weights` is True"
+        ),
     )
 
     def __init__(self, args, **kwargs):
@@ -126,7 +137,7 @@ class FlexZBoostInformer(CatInformer):
             raise ValueError("ref_band not present in bands list! ")
 
     @staticmethod
-    def split_data(fz_data, sz_data, trainfrac, seed):
+    def split_data(fz_data, sz_data, trainfrac, seed, weights=None):
         """
         make a random partition of the training data into training and
         validation, validation data will be used to determine bump
@@ -141,7 +152,11 @@ class FlexZBoostInformer(CatInformer):
         z_train = sz_data[perm[:ntrain]]
         x_val = fz_data[perm[ntrain:]]
         z_val = sz_data[perm[ntrain:]]
-        return x_train, x_val, z_train, z_val
+        if weights is not None:
+            w_train = weights[perm[:ntrain]]
+        else:
+            w_train = None
+        return x_train, x_val, z_train, z_val, w_train
 
     def divide_array(self, grid):
         if self.comm is None:
@@ -170,6 +185,12 @@ class FlexZBoostInformer(CatInformer):
             else:  # pragma: no cover
                 training_data = self.get_data("input")
             speczs = np.array(training_data[self.config["redshift_col"]])
+            if self.config.use_weights:
+                if self.config.weights_column not in training_data.keys():  # pragma: no cover
+                    raise KeyError(f"column {self.config.weights_column} not in training_file")
+                train_weights = np.array(training_data[self.config.weights_column])
+            else:
+                train_weights = None
 
             # convert training data format to numpy dictionary
             if tables_io.types.table_type(training_data) != 1:
@@ -216,18 +237,19 @@ class FlexZBoostInformer(CatInformer):
                     )
                     model.bump_threshold = self.config.bumpmin
                     model.sharpen_alpha = self.config.sharpmin
-                    model.fit(color_data, speczs)
+                    model.fit(color_data, speczs, train_weights)
                 else:  # pragma: no cover
                     raise ValueError(
                         "trainfrac cannot be 1.0 when a grid search of bump and sharpen are performed, this leads to empty validation arrays!"
                     )
             else:
-                train_dat, val_dat, train_sz, val_sz = self.split_data(
-                    color_data, speczs, self.config.trainfrac, self.config.seed
+                train_dat, val_dat, train_sz, val_sz, train_w = self.split_data(
+                    color_data, speczs, self.config.trainfrac, self.config.seed,
+                    train_weights
                 )
                 print("read in training data")
                 print("fit the model...")
-                model.fit(train_dat, train_sz)
+                model.fit(train_dat, train_sz, train_w)
                 print("finding best bump thresh...")
         else:  # pragma: no cover
             model = None
@@ -290,7 +312,7 @@ class FlexZBoostInformer(CatInformer):
                 # retrain with full dataset or not
                 if self.config.retrain_full:
                     print("Retraining with full training set...")
-                    model.fit(color_data, speczs)
+                    model.fit(color_data, speczs, train_weights)
                 else:  # pragma: no cover
                     print(
                         f"Skipping retraining, only fraction {self.config.trainfrac}"

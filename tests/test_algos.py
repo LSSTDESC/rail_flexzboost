@@ -3,8 +3,8 @@ import os
 import numpy as np
 import pytest
 import scipy.special
+import tables_io
 from rail.core.data import TableHandle
-from rail.core.stage import RailStage
 from rail.utils.path_utils import RAILDIR
 from rail.utils.testing_utils import one_algo
 
@@ -87,6 +87,54 @@ def test_flexzboost_with_interp():
     assert np.isclose(results.ancil["mode"], rerun_results.ancil["mode"]).all()
     assert np.isclose(results.ancil["mean"], rerun_results.ancil["mean"]).all()
     assert np.isclose(results.ancil["median"], rerun_results.ancil["median"]).all()
+
+
+def test_flexzboost_with_weights():
+    train_config_dict = {
+        "zmin": 0.0,
+        "zmax": 3.0,
+        "nzbins": 301,
+        "trainfrac": 0.75,
+        "bumpmin": 0.02,
+        "bumpmax": 0.35,
+        "nbump": 3,
+        "sharpmin": 0.7,
+        "sharpmax": 2.1,
+        "nsharp": 3,
+        "max_basis": 35,
+        "basis_system": "cosine",
+        "regression_params": {"max_depth": 8, "objective": "reg:squarederror"},
+        "hdf5_groupname": "photometry",
+        "model": "model.tmp",
+        "use_weights": True,
+        "weights_column": "weight"
+    }
+    estim_config_dict = {
+        "zmin": 0.0,
+        "zmax": 3.0,
+        "nzbins": 301,
+        "hdf5_groupname": "photometry",
+        "model": "model.tmp",
+        "qp_representation": "interp",
+        "calculated_point_estimates": ["mode", "mean"],
+    }
+    fakeweights = np.ones(100, dtype=float)
+    fakeweights[:25] *= 0.75
+    fakeweights[25:70] *= 0.9
+
+    traindata = os.path.join(RAILDIR, "rail/examples_data/testdata/training_100gal.hdf5")
+    validdata = os.path.join(RAILDIR, "rail/examples_data/testdata/validation_10gal.hdf5")
+    training_data = tables_io.read(traindata)
+    validation_data = tables_io.read(validdata)
+    training_data['photometry']['weight'] = fakeweights
+
+    train_pz = flexzboost.FlexZBoostInformer.make_stage(name="fzb_weight_train", **train_config_dict)
+    train_pz.inform(training_data)
+
+    pz = flexzboost.FlexZBoostEstimator.make_stage(name="fzb_weight_estim", **estim_config_dict)
+    results = pz.estimate(validation_data)
+
+    assert len(results().ancil["mode"]) == 10
 
 
 def test_flexzboost_skip_grid():
@@ -243,6 +291,6 @@ def test_pq_input_format():
     train_pz.inform(training_data)
 
     pz = pz_algo.make_stage(name="FZBoost", **estim_config_dict)
-    estim = pz.estimate(validation_data)
+    _ = pz.estimate(validation_data)
 
     os.remove(pz.get_output(pz.get_aliased_tag("output"), final_name=True))
