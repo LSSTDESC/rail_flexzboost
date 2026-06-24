@@ -211,7 +211,7 @@ class FlexZBoostInformer(CatInformer):
                     training_data[bandname][detmask] = self.config.mag_limits[bandname]
                     training_data[errname][detmask] = 1.0
 
-            print("stacking some data...")
+            self.log.info("stacking some data...")
             color_data = make_color_data(
                 training_data,
                 self.config.bands,
@@ -232,7 +232,7 @@ class FlexZBoostInformer(CatInformer):
             if np.isclose(self.config.trainfrac, 1.0):
                 if self.config.nbump == 1 and self.config.nsharp == 1:
                     self.do_grid_search = False
-                    print(
+                    self.log.info(
                         "skipping grid search, setting bump_thresh to bumpmin and sharpen to sharpmin"
                     )
                     model.bump_threshold = self.config.bumpmin
@@ -247,10 +247,10 @@ class FlexZBoostInformer(CatInformer):
                     color_data, speczs, self.config.trainfrac, self.config.seed,
                     train_weights
                 )
-                print("read in training data")
-                print("fit the model...")
+                self.log.info("read in training data")
+                self.log.info("fit the model...")
                 model.fit(train_dat, train_sz, train_w)
-                print("finding best bump thresh...")
+                self.log.info("finding best bump thresh...")
         else:  # pragma: no cover
             model = None
             val_dat = None
@@ -286,7 +286,7 @@ class FlexZBoostInformer(CatInformer):
                 bestbump = bump_grid[loss_list.index(bestloss)]
                 model.bump_threshold = bestbump
 
-                print("finding best sharpen parameter...")
+                self.log.info("finding best sharpen parameter...")
             sharpen_grid = np.linspace(
                 self.config.sharpmin, self.config.sharpmax, self.config.nsharp
             )
@@ -311,14 +311,14 @@ class FlexZBoostInformer(CatInformer):
                 model.sharpen_alpha = bestsharp
                 # retrain with full dataset or not
                 if self.config.retrain_full:
-                    print("Retraining with full training set...")
+                    self.log.info("Retraining with full training set...")
                     model.fit(color_data, speczs, train_weights)
                 else:  # pragma: no cover
-                    print(
+                    self.log.info(
                         f"Skipping retraining, only fraction {self.config.trainfrac}"
                         "of training data used when training model"
                     )
-            print(f"Best bump = {bestbump}, best sharpen = {bestsharp}")
+            self.log.info(f"Best bump = {bestbump}, best sharpen = {bestsharp}")
         self.model = model
         self.add_data("model", self.model)
 
@@ -356,7 +356,7 @@ class FlexZBoostEstimator(CatEstimator):
         self.zgrid = None
 
     def _process_chunk(self, start, end, data, first):
-        print(f"Process {self.rank} estimating PZ PDF for rows {start:,} - {end:,}")
+        self.log.info(f"Process {self.rank} estimating PZ PDF for rows {start:,} - {end:,}")
 
         # convert data format to numpy dictionary
         if tables_io.types.table_type(data) != 1:
